@@ -1,0 +1,29 @@
+{
+  "items": [
+    {
+      "name": "test",
+      "created": 1685256027,
+      "is_dir": true,
+      "path": "/test/",
+      "user": {}
+    },
+    {
+      "name": "upload",
+      "created": 1685256027,
+      "is_dir": true,
+      "path": "/test/upload/",
+      "user": {}
+    },
+    {
+      "name": "upload_test.txt",
+      "extension": "txt",
+      "mime": "text/plain",
+      "size": 4,
+      "created": 1685256027,
+      "is_dir": false,
+      "path": "/test/upload/upload_test.txt",
+      "user": {}
+    }
+  ],
+  "total": 3
+}
