@@ -262,7 +262,7 @@ func (c *HttpClient) AuthToken() (string, error) {
 		}
 
 		if resp.StatusCode != 200 {
-			return "", fmt.Errorf("unexpected status code '%v' returned by qbee login: '%v'", resp.StatusCode, b)
+			return "", fmt.Errorf("unexpected status code '%v' returned by qbee login (email=%v): '%v'", resp.StatusCode, c.Username, string(b))
 		}
 
 		var auth authResponse

@@ -20,7 +20,9 @@ type FileUploadResponse struct {
 	Path string `json:"path"`
 }
 
-func (s *FilesService) Upload(sourceFile string, targetPath string) (*FileUploadResponse, error) {
+func (s *FilesService) Upload(sourceFile string, targetPath string, filename string) (*FileUploadResponse, error) {
+	log.Printf("Uploading source file '%v' to '%v', with name '%v'", sourceFile, targetPath, filename)
+
 	//values := url.Values{}
 	//values.Set("path", targetPath)
 	//values.Set("file", sourceFile)
@@ -38,7 +40,11 @@ func (s *FilesService) Upload(sourceFile string, targetPath string) (*FileUpload
 		return nil, fmt.Errorf("could not write multipart field 'path': %w", err)
 	}
 
-	part, _ := writer.CreateFormFile("file", filepath.Base(file.Name()))
+	if filename == "" {
+		filename = filepath.Base(file.Name())
+	}
+
+	part, _ := writer.CreateFormFile("file", filename)
 	_, err = io.Copy(part, file)
 	if err != nil {
 		return nil, fmt.Errorf("could not copy bytes to form part: %w", err)
@@ -80,6 +86,8 @@ type FileDownloadResponse struct {
 }
 
 func (s *FilesService) Download(path string) (*FileDownloadResponse, error) {
+	log.Printf("Downloading file '%v'", path)
+
 	query := DownloadOptions{Path: path}
 	resp, err := s.Client.Get("/file", query)
 	if err != nil {
@@ -109,6 +117,8 @@ type FileInfo struct {
 }
 
 func (s *FilesService) List() (*ListFilesResponse, error) {
+	log.Printf("listing files")
+
 	resp, err := s.Client.Get("/files", nil)
 	if err != nil {
 		return nil, fmt.Errorf("files.ListFiles: %w", err)
@@ -134,6 +144,8 @@ type DeleteOptions struct {
 }
 
 func (s *FilesService) Delete(path string) error {
+	log.Printf("deleting file '%v'", path)
+
 	opt := DeleteOptions{Path: path}
 	response, err := s.Client.Delete("/file", opt)
 	if err != nil {
@@ -159,24 +171,34 @@ type CreateDirResponse struct {
 }
 
 func (s *FilesService) CreateDir(path string, dirName string) (response *CreateDirResponse, err error) {
+	log.Printf("creating dir '%v' with parent '%v'", dirName, path)
+
 	opt := CreateDirOptions{
 		Path: path,
 		Name: dirName,
 	}
 
+	if path == "" {
+		return nil, fmt.Errorf("files.CreateDir(%v, %v): empty path given", path, dirName)
+	}
+
+	if dirName == "" {
+		return nil, fmt.Errorf("files.CreateDir(%v, %v): empty dirName given", path, dirName)
+	}
+
 	r, err := s.Client.Post("/file/createdir", opt)
 	if err != nil {
-		return nil, fmt.Errorf("files.CreateDir(%v): %w", path, err)
+		return nil, fmt.Errorf("files.CreateDir(%v, %v): %w", path, dirName, err)
 	}
 
 	err = checkResponse(*r)
 	if err != nil {
-		return nil, fmt.Errorf("files.CreateDir(%v): %w", path, err)
+		return nil, fmt.Errorf("files.CreateDir(%v, %v): %w", path, dirName, err)
 	}
 
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
-		return nil, fmt.Errorf("files.CreateDir io.ReadAll: %w", err)
+		return nil, fmt.Errorf("files.CreateDir(%v, %v) io.ReadAll: %w", path, dirName, err)
 	}
 
 	err = json.Unmarshal(b, &response)

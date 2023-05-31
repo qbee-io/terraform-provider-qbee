@@ -2,85 +2,139 @@ package provider
 
 import (
 	"context"
-	"net/http"
-
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/lesteenman/terraform-provider-qbee/internal/qbee"
+	"os"
 )
 
-// Ensure ScaffoldingProvider satisfies various provider interfaces.
-var _ provider.Provider = &ScaffoldingProvider{}
+// Ensure QbeeProvider satisfies various provider interfaces.
+var _ provider.Provider = &QbeeProvider{}
 
-// ScaffoldingProvider defines the provider implementation.
-type ScaffoldingProvider struct {
+// QbeeProvider defines the provider implementation.
+type QbeeProvider struct {
 	// version is set to the provider version on release, "dev" when the
 	// provider is built and ran locally, and "test" when running acceptance
 	// testing.
 	version string
 }
 
-// ScaffoldingProviderModel describes the provider data model.
-type ScaffoldingProviderModel struct {
+// qbeeProviderModel describes the provider data model.
+type qbeeProviderModel struct {
 	Username types.String `tfsdk:"username"`
 	Password types.String `tfsdk:"password"`
 }
 
-func (p *ScaffoldingProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
-	resp.TypeName = "scaffolding"
+func (p *QbeeProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
+	resp.TypeName = "qbee"
 	resp.Version = p.version
 }
 
-func (p *ScaffoldingProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
+func (p *QbeeProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"username": schema.StringAttribute{
 				MarkdownDescription: "Qbee username",
-				Optional:            false,
+				Optional:            true,
 			},
 			"password": schema.StringAttribute{
 				MarkdownDescription: "Qbee password",
-				Optional:            false,
+				Optional:            true,
+				Sensitive:           true,
 			},
 		},
 	}
 }
 
-func (p *ScaffoldingProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	var data ScaffoldingProviderModel
+func (p *QbeeProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	var config qbeeProviderModel
 
-	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Configuration values are now available.
-	// if data.Endpoint.IsNull() { /* ... */ }
+	if config.Username.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("username"),
+			"Unknown Qbee API Username",
+			"The provider cannot create the Qbee API client as there is an unknown configuration value for the Qbee API username. "+
+				"Either target apply the source of the value first, set the QBEE_USERNAME environment variable or set the value statically in the configuration.",
+		)
+	}
 
-	// Example client configuration for data sources and resources
-	client := http.DefaultClient
+	if config.Password.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("password"),
+			"Unknown Qbee API Password",
+			"The provider cannot create the Qbee API client as there is an unknown configuration value for the Qbee API password. "+
+				"Either target apply the source of the value first, set the QBEE_PASSWORD environment variable or set the value statically in the configuration",
+		)
+	}
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	username := os.Getenv("QBEE_USERNAME")
+	password := os.Getenv("QBEE_PASSWORD")
+
+	if !config.Username.IsNull() {
+		username = config.Username.ValueString()
+	}
+
+	if !config.Password.IsNull() {
+		password = config.Password.ValueString()
+	}
+
+	if username == "" {
+		resp.Diagnostics.AddAttributeError(path.Root("username"), "Missing Qbee API username",
+			"the Qbee API client can not be created because the username is missing."+
+				"Set the username in the provider config or use the QBEE_USERNAME environment variable.")
+	}
+
+	if password == "" {
+		resp.Diagnostics.AddAttributeError(path.Root("password"), "Missing Qbee API username",
+			"the Qbee API client can not be created because the username is missing."+
+				"Set the password in the provider config or use the QBEE_PASSWORD environment variable.")
+	}
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	client, err := qbee.NewClient(username, password)
+
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Unable to create Qbee API Client",
+			"An unexpected error occurred when creating the Qbee API client: "+err.Error())
+		return
+	}
+
 	resp.DataSourceData = client
 	resp.ResourceData = client
 }
 
-func (p *ScaffoldingProvider) Resources(ctx context.Context) []func() resource.Resource {
+func (p *QbeeProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		NewExampleResource,
+		NewFilemanagerFileResource,
+		NewFilemanagerDirectoryResource,
 	}
 }
 
-func (p *ScaffoldingProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
-	return []func() datasource.DataSource{
-		NewExampleDataSource,
-	}
+func (p *QbeeProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+	return nil
 }
 
 func New(version string) func() provider.Provider {
 	return func() provider.Provider {
-		return &ScaffoldingProvider{
+		return &QbeeProvider{
 			version: version,
 		}
 	}

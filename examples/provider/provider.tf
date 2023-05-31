@@ -1,3 +1,4 @@
-provider "scaffolding" {
-  # example configuration here
+provider "qbee" {
+  username = "qbee@example.com"
+  password = "test123"
 }
