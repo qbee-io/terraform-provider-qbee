@@ -49,7 +49,7 @@ func (r *filemanagerDirectoryResource) Schema(_ context.Context, _ resource.Sche
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:    true,
-				Description: "Identifier attribute. Equal to 'path'.",
+				Description: "Placeholder ID value",
 			},
 			"path": schema.StringAttribute{
 				Computed:            true,
@@ -99,7 +99,7 @@ func (r *filemanagerDirectoryResource) Create(ctx context.Context, req resource.
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ID = types.StringValue(createDirResponse.Path)
+	plan.ID = types.StringValue("placeholder")
 	plan.Path = types.StringValue(createDirResponse.Path)
 
 	// Set state to fully populated data
@@ -121,29 +121,37 @@ func (r *filemanagerDirectoryResource) Read(ctx context.Context, req resource.Re
 	}
 
 	// Get the refreshed directory value from Qbee
-	expectedPath := state.ID.ValueString()
+	directoryName := ""
+	directoryParent := ""
+	directoryPath := state.Path.ValueString()
 
 	listFilesResponse, err := r.client.Files.List()
-	tflog.Info(ctx, fmt.Sprintf("trying to find item %v", state.ID.ValueString()))
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading Qbee Filemanager data",
 			"Could not read Filemanager data from Qbee: "+err.Error())
+		return
 	}
 
+	tflog.Info(ctx, fmt.Sprintf("trying to find item %v", state.Path.ValueString()))
+	tflog.Info(ctx, fmt.Sprintf("looping over entries in %v", listFilesResponse))
 	exists := false
 	for _, item := range listFilesResponse.Items {
-		if item.Path == expectedPath && item.IsDir {
+		if item.Path == directoryPath && item.IsDir {
 			exists = true
+			directoryName = item.Name
+			directoryParent = directoryPath[:len(directoryPath)-len(fmt.Sprintf("%v/", directoryName))]
 		}
 	}
 
 	// Delete from the state if it no longer exists
-	if !exists {
-		resp.State.RemoveResource(ctx)
+	if exists {
+		state.ID = types.StringValue("placeholder")
+		state.Name = types.StringValue(directoryName)
+		state.Parent = types.StringValue(directoryParent)
+		state.Path = types.StringValue(directoryPath)
 	} else {
-		state.ID = types.StringValue(expectedPath)
-		state.Path = types.StringValue(expectedPath)
+		resp.State.RemoveResource(ctx)
 	}
 
 	resp.State.Set(ctx, state)
@@ -168,9 +176,9 @@ func (r *filemanagerDirectoryResource) Delete(ctx context.Context, req resource.
 	}
 
 	// Delete old directory
-	path := state.Path.ValueString()
-	tflog.Info(ctx, fmt.Sprintf("Deleting filemanager directory '%v'", path))
-	err := r.client.Files.Delete(path)
+	directoryPath := state.Path.ValueString()
+	tflog.Info(ctx, fmt.Sprintf("Deleting filemanager directory '%v'", directoryPath))
+	err := r.client.Files.Delete(directoryPath)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting filemanager_directory",
@@ -180,12 +188,12 @@ func (r *filemanagerDirectoryResource) Delete(ctx context.Context, req resource.
 }
 
 func (r *filemanagerDirectoryResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	id := req.ID
-	if id[len(id)-1:] != "/" {
+	importPath := req.ID
+	if importPath[len(importPath)-1:] != "/" {
 		resp.Diagnostics.AddError("Error importing filemanager_directory",
-			fmt.Sprintf("Invalid directory ID '%v': a directory ID must have a trailing slash.", id))
+			fmt.Sprintf("Invalid directory path '%v': a directory path must have a trailing slash.", importPath))
 		return
 	}
 
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	resource.ImportStatePassthroughID(ctx, path.Root("path"), req, resp)
 }

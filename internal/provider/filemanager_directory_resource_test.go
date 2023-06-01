@@ -14,30 +14,30 @@ func TestAccFilemanagerDirectoryResource(t *testing.T) {
 			{
 				Config: providerConfig + `
 resource "qbee_filemanager_directory" "test" {
-	parent = "/"
+	parent = "/acctest/filemanager_directory/"
 	name = "testdir"
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "id", "/testdir/"),
-					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "path", "/testdir/"),
-					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "parent", "/"),
+					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "path", "/acctest/filemanager_directory/testdir/"),
+					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "parent", "/acctest/filemanager_directory/"),
 					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "name", "testdir"),
+					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "id", "placeholder"),
 				),
 			},
 			// Update and read testing
 			{
 				Config: providerConfig + `
 resource "qbee_filemanager_directory" "test" {
-	parent = "/"
+	parent = "/acctest/filemanager_directory/"
 	name = "testdir-2"
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "id", "/testdir-2/"),
-					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "path", "/testdir-2/"),
-					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "parent", "/"),
+					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "path", "/acctest/filemanager_directory/testdir-2/"),
+					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "parent", "/acctest/filemanager_directory/"),
 					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "name", "testdir-2"),
+					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "id", "placeholder"),
 				),
 			},
 			// Import testing
@@ -45,6 +45,7 @@ resource "qbee_filemanager_directory" "test" {
 				ResourceName:      "qbee_filemanager_directory.test",
 				ImportState:       true,
 				ImportStateVerify: true,
+				ImportStateId:     "/acctest/filemanager_directory/testdir-2/",
 			},
 		},
 	})

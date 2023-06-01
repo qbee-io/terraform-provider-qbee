@@ -121,11 +121,13 @@ func (s *FilesService) List() (*ListFilesResponse, error) {
 
 	resp, err := s.Client.Get("/files", nil)
 	if err != nil {
+		log.Printf("Err in Client.Get: %v", err)
 		return nil, fmt.Errorf("files.ListFiles: %w", err)
 	}
 
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
+		log.Printf("Err in io.ReadAll: %v", err)
 		return nil, fmt.Errorf("files.Download io.ReadAll: %w", err)
 	}
 
@@ -203,7 +205,6 @@ func (s *FilesService) CreateDir(path string, dirName string) (response *CreateD
 
 	err = json.Unmarshal(b, &response)
 	if err != nil {
-		log.Printf("could not parse json: %v\n", string(b))
 		return nil, fmt.Errorf("files.CreateDir Unmarshal: %w", err)
 	}
 

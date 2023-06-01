@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -14,8 +15,9 @@ import (
 
 // Ensure the implementation satisfies the expected interfaces.
 var (
-	_ resource.Resource              = &filemanagerFileResource{}
-	_ resource.ResourceWithConfigure = &filemanagerFileResource{}
+	_ resource.Resource                = &filemanagerFileResource{}
+	_ resource.ResourceWithConfigure   = &filemanagerFileResource{}
+	_ resource.ResourceWithImportState = &filemanagerFileResource{}
 )
 
 func NewFilemanagerFileResource() resource.Resource {
@@ -46,7 +48,7 @@ func (r *filemanagerFileResource) Schema(_ context.Context, _ resource.SchemaReq
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Computed:    true,
-				Description: "Identifier attribute. Equal to 'path'.",
+				Description: "Placeholder ID value",
 			},
 			"path": schema.StringAttribute{
 				Computed:            true,
@@ -112,7 +114,7 @@ func (r *filemanagerFileResource) Create(ctx context.Context, req resource.Creat
 
 	// Map response body to schema and populate Computed attribute values
 	fullFilePath := uploadFileResponse.Path + uploadFileResponse.File
-	plan.ID = types.StringValue(fullFilePath)
+	plan.ID = types.StringValue("placeholder")
 	plan.Path = types.StringValue(fullFilePath)
 	plan.Name = types.StringValue(uploadFileResponse.File)
 
@@ -134,34 +136,38 @@ func (r *filemanagerFileResource) Read(ctx context.Context, req resource.ReadReq
 		return
 	}
 
-	fullFilePath := state.ID.ValueString()
+	filePath := state.Path.ValueString()
+	tflog.Info(ctx, fmt.Sprintf("reading filemanager_file with path '%v'", filePath))
 
 	// Get the current file from Qbee
 	listFilesResponse, err := r.client.Files.List()
-	tflog.Info(ctx, fmt.Sprintf("trying to find item %v", state.ID.ValueString()))
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading Qbee Filemanager data",
 			"Could not read Filemanager data from Qbee: "+err.Error())
+		return
 	}
 
 	var fileName string
+	var fileParent string
 
 	exists := false
 	for _, item := range listFilesResponse.Items {
-		if item.Path == fullFilePath && !item.IsDir {
+		if item.Path == filePath && !item.IsDir {
 			exists = true
 			fileName = item.Name
+			fileParent = filePath[:len(filePath)-len(fileName)]
 		}
 	}
 
-	// Delete from the state if it no longer exists
-	if !exists {
-		resp.State.RemoveResource(ctx)
+	if exists {
+		// Update the current state
+		state.ID = types.StringValue("placeholder")
+		state.Name = types.StringValue(fileName)
+		state.Parent = types.StringValue(fileParent)
 	} else {
-		fullFilePath = state.Parent.ValueString() + fileName
-		//state.ID = types.StringValue(fullFilePath)
-		state.Path = types.StringValue(fullFilePath)
+		// Delete from the state if it no longer exists
+		resp.State.RemoveResource(ctx)
 	}
 
 	resp.State.Set(ctx, state)
@@ -171,7 +177,7 @@ func (r *filemanagerFileResource) Read(ctx context.Context, req resource.ReadReq
 func (r *filemanagerFileResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	resp.Diagnostics.AddError(
 		"Error updating filemanager_file",
-		"filemanager_file")
+		"filemanager_file does not support updating resources inline")
 	return
 }
 
@@ -186,13 +192,17 @@ func (r *filemanagerFileResource) Delete(ctx context.Context, req resource.Delet
 	}
 
 	// Delete file
-	path := state.Path.ValueString()
-	tflog.Info(ctx, fmt.Sprintf("Deleting filemanager path '%v'", path))
-	err := r.client.Files.Delete(path)
+	filePath := state.Path.ValueString()
+	tflog.Info(ctx, fmt.Sprintf("Deleting filemanager path '%v'", filePath))
+	err := r.client.Files.Delete(filePath)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error deleting filemanager_path",
-			"could not delete filemanager path, unexpected error: "+err.Error())
+			"Error deleting filemanager_file",
+			fmt.Sprintf("could not delete filemanager_file with path '%v', unexpected error: %v", filePath, err.Error()))
 		return
 	}
+}
+
+func (r *filemanagerFileResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	resource.ImportStatePassthroughID(ctx, path.Root("path"), req, resp)
 }

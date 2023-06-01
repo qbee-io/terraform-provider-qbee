@@ -16,12 +16,13 @@ const (
 	DefaultBaseURL = "https://www.app.qbee.io/api/v2"
 )
 
+var authToken string
+
 type HttpClient struct {
 	Username string
 	Password string
 
-	authToken string
-	baseURL   *url.URL
+	baseURL *url.URL
 
 	Inventory *InventoryService
 	Files     *FilesService
@@ -222,6 +223,11 @@ func (c *HttpClient) AuthenticatedRequest(req *http.Request) (*http.Response, er
 		return nil, fmt.Errorf("error while executing HTTP request %v: %w", req, err)
 	}
 
+	err = checkResponse(*resp)
+	if err != nil {
+		return nil, fmt.Errorf("non-200 http code returned by authenticated request: %w", err)
+	}
+
 	return resp, nil
 }
 
@@ -235,7 +241,7 @@ type loginRequest struct {
 }
 
 func (c *HttpClient) AuthToken() (string, error) {
-	if c.authToken == "" {
+	if authToken == "" {
 		loginReq := loginRequest{
 			Email:    c.Username,
 			Password: c.Password,
@@ -271,10 +277,10 @@ func (c *HttpClient) AuthToken() (string, error) {
 			return "", fmt.Errorf("could not parse response body to auth response: '%v', %w", string(b), err)
 		}
 
-		c.authToken = auth.Token
+		authToken = auth.Token
 	}
 
-	return c.authToken, nil
+	return authToken, nil
 }
 
 func (c *HttpClient) buildURL(p string) *url.URL {
