@@ -51,7 +51,7 @@ func TestUploadFile(t *testing.T) {
 }`)
 	})
 
-	fileUpload, err := client.Files.Upload("testfiles/upload_test.txt", "/target")
+	fileUpload, err := client.Files.Upload("testfiles/upload_test.txt", "/target", "")
 
 	if err != nil {
 		t.Fatalf("Upload threw error: %v", err)

@@ -26,6 +26,12 @@ type HttpClient struct {
 
 	Inventory *InventoryService
 	Files     *FilesService
+	Grouptree *GrouptreeService
+}
+
+type ErrorResponse struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
 }
 
 type ClientOptionFunc func(*HttpClient) error
@@ -76,6 +82,7 @@ func NewClient(username string, password string, options ...ClientOptionFunc) (*
 
 	c.Inventory = &InventoryService{client: c}
 	c.Files = &FilesService{Client: c}
+	c.Grouptree = &GrouptreeService{Client: c}
 
 	return c, nil
 }
@@ -106,72 +113,63 @@ func (c *HttpClient) Get(path string, q interface{}) (*http.Response, error) {
 }
 
 func (c *HttpClient) Post(path string, body interface{}) (*http.Response, error) {
-	var req *http.Request
 	u := c.buildURL(path)
 
-	if body != nil {
-		buffer := new(bytes.Buffer)
-		err := json.NewEncoder(buffer).Encode(body)
-		if err != nil {
-			return nil, fmt.Errorf("HttpClient.Post(%v) Marshal: ", path)
-		}
-
-		req, err = http.NewRequest(http.MethodPost, u.String(), buffer)
-		if err != nil {
-			return nil, fmt.Errorf("HttpClient.Post(%v) NewRequest: ", path)
-		}
-	} else {
-		var err error
-		req, err = http.NewRequest(http.MethodPost, u.String(), nil)
-		if err != nil {
-			return nil, fmt.Errorf("HttpClient.Post(%v) NewRequest: ", path)
-		}
+	response, err := c.requestWithBody(body, http.MethodPost, u)
+	if err != nil {
+		return nil, fmt.Errorf("HttpClient.Put(%v): ", err)
 	}
 
-	response, err := c.AuthenticatedRequest(req)
-	if err != nil {
-		return nil, fmt.Errorf("httpclient.Post(%v): %w", path, err)
-	}
+	return response, nil
+}
 
-	err = checkResponse(*response)
+func (c *HttpClient) Put(path string, body interface{}) (*http.Response, error) {
+	u := c.buildURL(path)
+
+	response, err := c.requestWithBody(body, http.MethodPut, u)
 	if err != nil {
-		return nil, fmt.Errorf("httpclient.Post(%v): %w", path, err)
+		return nil, fmt.Errorf("HttpClient.Put(%v): ", err)
 	}
 
 	return response, nil
 }
 
 func (c *HttpClient) Delete(path string, body interface{}) (*http.Response, error) {
-	var req *http.Request
 	u := c.buildURL(path)
+
+	response, err := c.requestWithBody(body, http.MethodDelete, u)
+	if err != nil {
+		return nil, fmt.Errorf("HttpClient.Delete(%v): ", err)
+	}
+
+	return response, nil
+}
+
+func (c *HttpClient) requestWithBody(body interface{}, method string, u *url.URL) (*http.Response, error) {
+	var req *http.Request
 
 	if body != nil {
 		buffer := new(bytes.Buffer)
 		err := json.NewEncoder(buffer).Encode(body)
 		if err != nil {
-			return nil, fmt.Errorf("HttpClient.Delete(%v) Marshal: ", path)
+			return nil, fmt.Errorf("marshal: %w", err)
 		}
 
-		req, err = http.NewRequest(http.MethodDelete, u.String(), buffer)
+		req, err = http.NewRequest(method, u.String(), buffer)
 		if err != nil {
-			return nil, fmt.Errorf("HttpClient.Delete(%v) NewRequest: ", path)
+			return nil, fmt.Errorf("NewRequest: %w", err)
 		}
 	} else {
 		var err error
-		req, err = http.NewRequest(http.MethodDelete, u.String(), nil)
+		req, err = http.NewRequest(method, u.String(), nil)
 		if err != nil {
-			return nil, fmt.Errorf("HttpClient.Delete(%v) NewRequest: ", path)
+			return nil, fmt.Errorf("NewRequest: %w", err)
 		}
 	}
 
 	response, err := c.AuthenticatedRequest(req)
 	if err != nil {
-		return nil, fmt.Errorf("httpclient.Delete(%v): %w", path, err)
-	}
-
-	err = checkResponse(*response)
-	if err != nil {
-		return nil, fmt.Errorf("httpclient.Delete(%v): %w", path, err)
+		return nil, err
 	}
 
 	return response, nil

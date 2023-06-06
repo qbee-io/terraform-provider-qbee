@@ -26,7 +26,7 @@ func Test_file_lifecycle(t *testing.T) {
 	})
 
 	t.Run("it should be able to upload a file to that directory", func(t *testing.T) {
-		got, err := filesService.Upload(file, targetPath)
+		got, err := filesService.Upload(file, targetPath, "")
 
 		assert.Nil(t, err)
 
@@ -50,7 +50,15 @@ func Test_file_lifecycle(t *testing.T) {
 	})
 
 	t.Run("it should be able to list files", func(t *testing.T) {
+		got, err := filesService.List()
 
+		assert.Nil(t, err)
+
+		wants := ListFilesResponse{Items: []FileInfo{
+			{Name: "upload_test.txt"},
+		}}
+
+		assert.Equal(t, wants, *got)
 	})
 
 	t.Run("it should be able to delete a file", func(t *testing.T) {
