@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/lesteenman/terraform-provider-qbee/internal/qbee"
+	"strings"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -104,6 +105,7 @@ func (r *filemanagerFileResource) Create(ctx context.Context, req resource.Creat
 	parent := plan.Parent.ValueString()
 	sourceFile := plan.SourceFile.ValueString()
 	filename := plan.Name.ValueString()
+	tflog.Info(ctx, fmt.Sprintf("Uploading file %v to %v/%v", sourceFile, parent, filename))
 	uploadFileResponse, err := r.client.Files.Upload(sourceFile, parent, filename)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -113,9 +115,10 @@ func (r *filemanagerFileResource) Create(ctx context.Context, req resource.Creat
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	fullFilePath := uploadFileResponse.Path + uploadFileResponse.File
+	trimmedParent := strings.TrimSuffix(uploadFileResponse.Path, "/")
+
 	plan.ID = types.StringValue("placeholder")
-	plan.Path = types.StringValue(fullFilePath)
+	plan.Path = types.StringValue(fmt.Sprintf("%v/%v", trimmedParent, uploadFileResponse.File))
 	plan.Name = types.StringValue(uploadFileResponse.File)
 
 	// Set state to fully populated data
@@ -137,7 +140,6 @@ func (r *filemanagerFileResource) Read(ctx context.Context, req resource.ReadReq
 	}
 
 	filePath := state.Path.ValueString()
-	tflog.Info(ctx, fmt.Sprintf("reading filemanager_file with path '%v'", filePath))
 
 	// Get the current file from Qbee
 	listFilesResponse, err := r.client.Files.List()

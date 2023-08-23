@@ -126,6 +126,7 @@ func (p *QbeeProvider) Resources(ctx context.Context) []func() resource.Resource
 		NewFilemanagerFileResource,
 		NewFilemanagerDirectoryResource,
 		NewGrouptreeGroupResource,
+		NewTagFiledistributionResource,
 	}
 }
 

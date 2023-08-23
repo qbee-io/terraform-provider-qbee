@@ -58,16 +58,16 @@ type grouptreeModificationData struct {
 }
 
 type GrouptreeModificationResponse struct {
-	Sha     string        `json:"sha"`
-	UserId  string        `json:"user_id"`
-	Changes string        `json:"changes"`
-	Type    string        `json:"type"`
-	Message string        `json:"message"`
-	Created uint64        `json:"created"`
-	Error   ErrorResponse `json:"error"`
+	Sha     string         `json:"sha"`
+	UserId  string         `json:"user_id"`
+	Changes string         `json:"changes"`
+	Type    string         `json:"type"`
+	Message string         `json:"message"`
+	Created uint64         `json:"created"`
+	Error   *ErrorResponse `json:"error"`
 }
 
-func (s GrouptreeService) Create(id string, ancestor string, title string) (*GrouptreeModificationResponse, error) {
+func (s GrouptreeService) Create(id string, ancestor string, title string) error {
 	changes := []grouptreeChanges{
 		{
 			Action: "create", Data: grouptreeModificationData{
@@ -79,15 +79,15 @@ func (s GrouptreeService) Create(id string, ancestor string, title string) (*Gro
 			}},
 	}
 
-	l, err := s.putGrouptreeModification(changes)
+	err := s.putGrouptreeModification(changes)
 	if err != nil {
-		return nil, fmt.Errorf("GrouptreeService.Create: %w", err)
+		return fmt.Errorf("GrouptreeService.Create: %w", err)
 	}
 
-	return l, nil
+	return nil
 }
 
-func (s GrouptreeService) Delete(id string, ancestor string) (*GrouptreeModificationResponse, error) {
+func (s GrouptreeService) Delete(id string, ancestor string) error {
 	changes := []grouptreeChanges{
 		{
 			Action: "delete", Data: grouptreeModificationData{
@@ -97,15 +97,15 @@ func (s GrouptreeService) Delete(id string, ancestor string) (*GrouptreeModifica
 			}},
 	}
 
-	resp, err := s.putGrouptreeModification(changes)
+	err := s.putGrouptreeModification(changes)
 	if err != nil {
-		return nil, fmt.Errorf("GrouptreeService.Delete: %w", err)
+		return fmt.Errorf("GrouptreeService.Delete: %w", err)
 	}
 
-	return resp, nil
+	return nil
 }
 
-func (s GrouptreeService) Rename(id string, ancestor string, title string) (*GrouptreeModificationResponse, error) {
+func (s GrouptreeService) Rename(id string, ancestor string, title string) error {
 	changes := []grouptreeChanges{
 		{
 			Action: "rename", Data: grouptreeModificationData{
@@ -115,15 +115,15 @@ func (s GrouptreeService) Rename(id string, ancestor string, title string) (*Gro
 			}},
 	}
 
-	resp, err := s.putGrouptreeModification(changes)
+	err := s.putGrouptreeModification(changes)
 	if err != nil {
-		return nil, fmt.Errorf("GrouptreeService.Delete: %w", err)
+		return fmt.Errorf("GrouptreeService.Rename: %w", err)
 	}
 
-	return resp, nil
+	return nil
 }
 
-func (s GrouptreeService) Move(id string, oldAncestor string, newAncestor string) (*GrouptreeModificationResponse, error) {
+func (s GrouptreeService) Move(id string, oldAncestor string, newAncestor string) error {
 	changes := []grouptreeChanges{
 		{
 			Action: "move", Data: grouptreeModificationData{
@@ -133,32 +133,20 @@ func (s GrouptreeService) Move(id string, oldAncestor string, newAncestor string
 			}},
 	}
 
-	resp, err := s.putGrouptreeModification(changes)
+	err := s.putGrouptreeModification(changes)
 	if err != nil {
-		return nil, fmt.Errorf("GrouptreeService.Delete: %w", err)
+		return fmt.Errorf("GrouptreeService.Move: %w", err)
 	}
 
-	return resp, nil
+	return nil
 }
 
-func (s GrouptreeService) putGrouptreeModification(changes []grouptreeChanges) (*GrouptreeModificationResponse, error) {
+func (s GrouptreeService) putGrouptreeModification(changes []grouptreeChanges) error {
 	options := grouptreeModificationOptions{Changes: changes}
-	resp, err := s.Client.Put("/grouptree", options)
+	_, err := s.Client.Put("/grouptree", options)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("io.ReadAll: %w", err)
-	}
-
-	var l GrouptreeModificationResponse
-	err = json.Unmarshal(b, &l)
-	if err != nil {
-		log.Printf("could not parse json: %v\n", string(b))
-		return nil, fmt.Errorf("unmarshal: %w", err)
-	}
-
-	return &l, nil
+	return nil
 }

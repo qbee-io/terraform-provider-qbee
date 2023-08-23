@@ -3,12 +3,12 @@ package provider
 import (
 	"context"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/lesteenman/terraform-provider-qbee/internal/qbee"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -16,9 +16,8 @@ import (
 
 // Ensure the implementation satisfies the expected interfaces.
 var (
-	_ resource.Resource                = &filemanagerDirectoryResource{}
-	_ resource.ResourceWithConfigure   = &filemanagerDirectoryResource{}
-	_ resource.ResourceWithImportState = &filemanagerDirectoryResource{}
+	_ resource.Resource              = &filemanagerDirectoryResource{}
+	_ resource.ResourceWithConfigure = &filemanagerDirectoryResource{}
 )
 
 func NewFilemanagerDirectoryResource() resource.Resource {
@@ -90,6 +89,7 @@ func (r *filemanagerDirectoryResource) Create(ctx context.Context, req resource.
 	// Create new directory
 	parent := plan.Parent.ValueString()
 	name := plan.Name.ValueString()
+	tflog.Info(ctx, fmt.Sprintf("Creating filemanager directory %v/%v", parent, name))
 	createDirResponse, err := r.client.Files.CreateDir(parent, name)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -133,8 +133,6 @@ func (r *filemanagerDirectoryResource) Read(ctx context.Context, req resource.Re
 		return
 	}
 
-	tflog.Info(ctx, fmt.Sprintf("trying to find item %v", state.Path.ValueString()))
-	tflog.Info(ctx, fmt.Sprintf("looping over entries in %v", listFilesResponse))
 	exists := false
 	for _, item := range listFilesResponse.Items {
 		if item.Path == directoryPath && item.IsDir {
@@ -176,8 +174,9 @@ func (r *filemanagerDirectoryResource) Delete(ctx context.Context, req resource.
 	}
 
 	// Delete old directory
-	directoryPath := state.Path.ValueString()
+	directoryPath := strings.TrimSuffix(state.Path.ValueString(), "/")
 	tflog.Info(ctx, fmt.Sprintf("Deleting filemanager directory '%v'", directoryPath))
+
 	err := r.client.Files.Delete(directoryPath)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -185,15 +184,4 @@ func (r *filemanagerDirectoryResource) Delete(ctx context.Context, req resource.
 			"could not delete filemanager directory, unexpected error: "+err.Error())
 		return
 	}
-}
-
-func (r *filemanagerDirectoryResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	importPath := req.ID
-	if importPath[len(importPath)-1:] != "/" {
-		resp.Diagnostics.AddError("Error importing filemanager_directory",
-			fmt.Sprintf("Invalid directory path '%v': a directory path must have a trailing slash.", importPath))
-		return
-	}
-
-	resource.ImportStatePassthroughID(ctx, path.Root("path"), req, resp)
 }

@@ -21,12 +21,6 @@ type FileUploadResponse struct {
 }
 
 func (s *FilesService) Upload(sourceFile string, targetPath string, filename string) (*FileUploadResponse, error) {
-	log.Printf("Uploading source file '%v' to '%v', with name '%v'", sourceFile, targetPath, filename)
-
-	//values := url.Values{}
-	//values.Set("path", targetPath)
-	//values.Set("file", sourceFile)
-
 	file, errFile1 := os.Open(sourceFile)
 	if errFile1 != nil {
 		return nil, fmt.Errorf("could not open source file '%v': %w", sourceFile, errFile1)
@@ -86,8 +80,6 @@ type FileDownloadResponse struct {
 }
 
 func (s *FilesService) Download(path string) (*FileDownloadResponse, error) {
-	log.Printf("Downloading file '%v'", path)
-
 	query := DownloadOptions{Path: path}
 	resp, err := s.Client.Get("/file", query)
 	if err != nil {
@@ -117,8 +109,6 @@ type FileInfo struct {
 }
 
 func (s *FilesService) List() (*ListFilesResponse, error) {
-	log.Printf("listing files")
-
 	resp, err := s.Client.Get("/files", nil)
 	if err != nil {
 		log.Printf("Err in Client.Get: %v", err)
@@ -146,15 +136,8 @@ type DeleteOptions struct {
 }
 
 func (s *FilesService) Delete(path string) error {
-	log.Printf("deleting file '%v'", path)
-
 	opt := DeleteOptions{Path: path}
-	response, err := s.Client.Delete("/file", opt)
-	if err != nil {
-		return fmt.Errorf("files.Delete(%v): %w", path, err)
-	}
-
-	err = checkResponse(*response)
+	_, err := s.Client.Delete("/file", opt)
 	if err != nil {
 		return fmt.Errorf("files.Delete(%v): %w", path, err)
 	}
@@ -173,8 +156,6 @@ type CreateDirResponse struct {
 }
 
 func (s *FilesService) CreateDir(path string, dirName string) (response *CreateDirResponse, err error) {
-	log.Printf("creating dir '%v' with parent '%v'", dirName, path)
-
 	opt := CreateDirOptions{
 		Path: path,
 		Name: dirName,
@@ -189,11 +170,6 @@ func (s *FilesService) CreateDir(path string, dirName string) (response *CreateD
 	}
 
 	r, err := s.Client.Post("/file/createdir", opt)
-	if err != nil {
-		return nil, fmt.Errorf("files.CreateDir(%v, %v): %w", path, dirName, err)
-	}
-
-	err = checkResponse(*r)
 	if err != nil {
 		return nil, fmt.Errorf("files.CreateDir(%v, %v): %w", path, dirName, err)
 	}

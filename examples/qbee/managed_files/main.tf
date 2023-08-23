@@ -26,8 +26,8 @@ resource "qbee_filemanager_file" "example_file" {
   file_hash  = filesha1("files/file1.txt")
 }
 
-resource "qbee_filemanager_file" "file_with_automatic_name" {
-  parent   = qbee_filemanager_directory.demo_dir.path
-  sourcefile = "files/file2.txt"
-  file_hash = filesha1("files/file2.txt")
-}
+#resource "qbee_filemanager_file" "file_with_automatic_name" {
+#  parent   = qbee_filemanager_directory.demo_dir.path
+#  sourcefile = "files/file2.txt"
+#  file_hash = filesha1("files/file2.txt")
+#}
