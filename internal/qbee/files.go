@@ -106,6 +106,7 @@ type FileInfo struct {
 	Created   uint64 `json:"created"`
 	Mime      string `json:"mime"`
 	Size      uint64 `json:"size"`
+	Digest    string `json:"digest"`
 }
 
 func (s *FilesService) List() (*ListFilesResponse, error) {
@@ -129,6 +130,51 @@ func (s *FilesService) List() (*ListFilesResponse, error) {
 	}
 
 	return &l, nil
+}
+
+type listFileQuery struct {
+	Path   string `url:"path"`
+	Search string `url:"search"`
+}
+
+type listFileSearch struct {
+	Name string `json:"name"`
+}
+
+func (s *FilesService) GetFileInfo(path string, filename string) (*FileInfo, error) {
+	search := listFileSearch{Name: filename}
+	searchBytes, err := json.Marshal(search)
+	if err != nil {
+		return nil, fmt.Errorf("files.GetFileInfo: %w", err)
+	}
+
+	r, err := s.Client.Get("/files", listFileQuery{
+		Path:   path,
+		Search: string(searchBytes),
+	})
+
+	if err != nil {
+		log.Printf("Err in Client.Get: %v", err)
+		return nil, fmt.Errorf("files.GetFileInfo: %w", err)
+	}
+
+	var response ListFilesResponse
+
+	err = s.Client.ParseJsonBody(r, &response)
+	if err != nil {
+		return nil, fmt.Errorf("files.GetFileInfo(%v): %w", path, err)
+	}
+
+	if len(response.Items) == 0 {
+		return nil, fmt.Errorf("files.GetFileInfo(%v): file not found", path)
+	}
+
+	if len(response.Items) > 1 {
+		log.Printf("files found: +%v", response.Items)
+		return nil, fmt.Errorf("files.GetFileInfo(%v): multiple files found, did you point to a directory instead of a file?", path)
+	}
+
+	return &response.Items[0], nil
 }
 
 type DeleteOptions struct {
