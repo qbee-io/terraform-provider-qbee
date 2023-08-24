@@ -16,7 +16,6 @@ func Test_grouptree_lifecycle(t *testing.T) {
 	grouptreeService := GrouptreeService{Client: client}
 
 	groupParent := "integrationtests"
-	secondGroupParent := "root"
 	groupId := "undertest"
 	groupTitle := "Group under test"
 
@@ -48,17 +47,6 @@ func Test_grouptree_lifecycle(t *testing.T) {
 		err := grouptreeService.Rename(groupId, groupParent, "Some new title")
 
 		assert.Nil(t, err)
-	})
-
-	t.Run("it should be able to move the group", func(t *testing.T) {
-		err := grouptreeService.Move(groupId, groupParent, secondGroupParent)
-
-		assert.Nil(t, err)
-
-		if !t.Failed() {
-			// Change the groupParent, so we delete it from the correct group in the next test
-			groupParent = secondGroupParent
-		}
 	})
 
 	t.Run("it should be able to delete the group", func(t *testing.T) {

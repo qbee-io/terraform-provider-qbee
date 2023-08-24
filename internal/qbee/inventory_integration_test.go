@@ -5,24 +5,17 @@ package qbee
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
-	"log"
-	"os"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func Test_get_test_device_from_inventory(t *testing.T) {
 	t.Run("it should find the device in the inventory", func(t *testing.T) {
-		var client = HttpClient{
-			Username: "TODO: Username",
-			Password: "TODO: Password",
-		}
-		var inventoryService = InventoryService{client: &client}
+		client, err := CreateTestClient()
+		require.Nil(t, err)
 
-		devices, err := inventoryService.GetDevices()
-		if err != nil {
-			log.Fatal(err)
-			os.Exit(1)
-		}
+		devices, err := client.Inventory.GetDevices()
+		require.Nil(t, err)
 
 		fmt.Print(devices)
 
