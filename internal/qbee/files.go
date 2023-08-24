@@ -170,7 +170,7 @@ func (s *FilesService) GetFileInfo(path string, filename string) (*FileInfo, err
 	}
 
 	if len(response.Items) > 1 {
-		log.Printf("files found: +%v", response.Items)
+		log.Printf("ERROR: multiple files found for query (path=%v, name=%v): +%v", path, filename, response.Items)
 		return nil, fmt.Errorf("files.GetFileInfo(%v): multiple files found, did you point to a directory instead of a file?", path)
 	}
 

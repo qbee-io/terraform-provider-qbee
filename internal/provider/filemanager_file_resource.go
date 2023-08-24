@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/lesteenman/terraform-provider-qbee/internal/qbee"
+	"path/filepath"
 	"strings"
 )
 
@@ -72,11 +73,11 @@ func (r *filemanagerFileResource) Schema(_ context.Context, _ resource.SchemaReq
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 				Description:   "The source file to upload.",
 			},
-			"file_hash": schema.StringAttribute{
+			"file_sha256": schema.StringAttribute{
 				Required:      true,
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-				Description: "The hash of the source file. Required to ensure resource updates if the file changes. " +
-					"Should be equal to `filesha1(sourcefile)`.",
+				Description: "The filebase64sha256 of the source file. Required to ensure resource " +
+					"updates if the file changes.",
 			},
 		},
 	}
@@ -88,7 +89,7 @@ type filemanagerFileResourceModel struct {
 	Parent     types.String `tfsdk:"parent"`
 	Name       types.String `tfsdk:"name"`
 	SourceFile types.String `tfsdk:"sourcefile"`
-	FileHash   types.String `tfsdk:"file_hash"`
+	FileSha256 types.String `tfsdk:"file_sha256"`
 }
 
 // Create creates the resource and sets the initial Terraform state.
@@ -139,10 +140,11 @@ func (r *filemanagerFileResource) Read(ctx context.Context, req resource.ReadReq
 		return
 	}
 
-	filePath := state.Path.ValueString()
+	fileParent := state.Parent.ValueString()
+	fileName := state.Name.ValueString()
 
 	// Get the current file from Qbee
-	listFilesResponse, err := r.client.Files.List()
+	fileInfo, err := r.client.Files.GetFileInfo(fileParent, fileName)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading Qbee Filemanager data",
@@ -150,27 +152,9 @@ func (r *filemanagerFileResource) Read(ctx context.Context, req resource.ReadReq
 		return
 	}
 
-	var fileName string
-	var fileParent string
-
-	exists := false
-	for _, item := range listFilesResponse.Items {
-		if item.Path == filePath && !item.IsDir {
-			exists = true
-			fileName = item.Name
-			fileParent = filePath[:len(filePath)-len(fileName)]
-		}
-	}
-
-	if exists {
-		// Update the current state
-		state.ID = types.StringValue("placeholder")
-		state.Name = types.StringValue(fileName)
-		state.Parent = types.StringValue(fileParent)
-	} else {
-		// Delete from the state if it no longer exists
-		resp.State.RemoveResource(ctx)
-	}
+	// Update the current state
+	state.ID = types.StringValue("placeholder")
+	state.FileSha256 = types.StringValue(fileInfo.Digest)
 
 	resp.State.Set(ctx, state)
 }
@@ -206,5 +190,11 @@ func (r *filemanagerFileResource) Delete(ctx context.Context, req resource.Delet
 }
 
 func (r *filemanagerFileResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughID(ctx, path.Root("path"), req, resp)
+	filePath := req.ID
+	fileParent := filepath.Dir(filePath) + "/"
+	fileName := filepath.Base(filePath)
+
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("path"), filePath)...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("parent"), fileParent)...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("name"), fileName)...)
 }

@@ -16,7 +16,7 @@ func TestAccFilemanagerFileResource(t *testing.T) {
 resource "qbee_filemanager_file" "test" {
 	parent = "/acctest/filemanager_file/"
 	sourcefile = "testfiles/file1.txt"
-	file_hash = filesha1("testfiles/file1.txt")
+	file_sha256 = filesha256("testfiles/file1.txt")
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -33,7 +33,7 @@ resource "qbee_filemanager_file" "test" {
 	parent = "/acctest/filemanager_file/"
 	name = "alt_filename.txt"
 	sourcefile = "testfiles/file2.txt"
-	file_hash = filesha1("testfiles/file2.txt")
+	file_sha256 = filesha256("testfiles/file2.txt")
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
