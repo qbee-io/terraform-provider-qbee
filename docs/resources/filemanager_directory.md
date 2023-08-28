@@ -22,7 +22,7 @@ description: |-
 
 ### Read-Only
 
-- `id` (String) Identifier attribute. Equal to 'path'.
+- `id` (String) Placeholder ID value
 - `path` (String) The full path of the directory. Equal to `{parent}/{name}/`.
 
 

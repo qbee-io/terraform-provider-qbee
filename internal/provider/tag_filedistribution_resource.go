@@ -77,7 +77,7 @@ func (r *tagFiledistributionResource) Schema(_ context.Context, _ resource.Schem
 									"is_template": schema.BoolAttribute{
 										Required: true,
 										Description: "If this file is a template. If set to true, template " +
-											"substitution of `{{ pattern }}` will be performed in the file contents, " +
+											"substitution of '\\{\\{ pattern \\}\\}' will be performed in the file contents, " +
 											"using the parameters defined in this filedistribution config.",
 									},
 								},

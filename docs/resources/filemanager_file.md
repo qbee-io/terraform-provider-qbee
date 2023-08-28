@@ -17,7 +17,7 @@ description: |-
 
 ### Required
 
-- `file_hash` (String) The hash of the source file. Required to ensure resource updates if the file changes. Should be equal to `filesha1(sourcefile)`.
+- `file_sha256` (String) The filebase64sha256 of the source file. Required to ensure resource updates if the file changes.
 - `parent` (String) The parent directory of the file. Must include a trailing slash. The parent will be created as an unmanaged directory if it does not yet exist.
 - `sourcefile` (String) The source file to upload.
 
@@ -27,7 +27,7 @@ description: |-
 
 ### Read-Only
 
-- `id` (String) Identifier attribute. Equal to 'path'.
+- `id` (String) Placeholder ID value
 - `path` (String) The full path of the directory. Equal to `{parent}/{name}`.
 
 

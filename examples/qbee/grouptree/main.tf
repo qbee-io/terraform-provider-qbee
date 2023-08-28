@@ -10,12 +10,13 @@ provider "qbee" {
 }
 
 resource "qbee_grouptree_group" "example_group" {
-  parent = "root"
-  title = "Managed Group"
+  ancestor = "root"
+  title    = "Managed Group"
+  id       = "top-level-node"
 }
 
 resource "qbee_grouptree_group" "example_nested_group" {
-  parent = qbee_grouptree_group.example_group.id
-  title = "Nested Group"
-  node_id = "fixed-node-id"
+  ancestor = qbee_grouptree_group.example_group.id
+  title    = "Nested Group"
+  id       = "nested-node"
 }
