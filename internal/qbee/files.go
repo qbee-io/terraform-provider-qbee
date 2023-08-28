@@ -95,10 +95,10 @@ func (s *FilesService) Download(path string) (*FileDownloadResponse, error) {
 }
 
 type ListFilesResponse struct {
-	Items []FileInfo `json:"items"`
+	Items []FileMetadata `json:"items"`
 }
 
-type FileInfo struct {
+type FileMetadata struct {
 	Name      string `json:"name"`
 	Extension string `json:"extension"`
 	Path      string `json:"path"`
@@ -132,49 +132,28 @@ func (s *FilesService) List() (*ListFilesResponse, error) {
 	return &l, nil
 }
 
-type listFileQuery struct {
-	Path   string `url:"path"`
-	Search string `url:"search"`
+type getFileMetadata struct {
+	Path string `url:"path"`
 }
 
-type listFileSearch struct {
-	Name string `json:"name"`
-}
-
-func (s *FilesService) GetFileInfo(path string, filename string) (*FileInfo, error) {
-	search := listFileSearch{Name: filename}
-	searchBytes, err := json.Marshal(search)
-	if err != nil {
-		return nil, fmt.Errorf("files.GetFileInfo: %w", err)
-	}
-
-	r, err := s.Client.Get("/files", listFileQuery{
-		Path:   path,
-		Search: string(searchBytes),
+func (s *FilesService) GetFileMetadata(path string) (*FileMetadata, error) {
+	r, err := s.Client.Get("/file/metadata", getFileMetadata{
+		Path: path,
 	})
 
 	if err != nil {
 		log.Printf("Err in Client.Get: %v", err)
-		return nil, fmt.Errorf("files.GetFileInfo: %w", err)
+		return nil, fmt.Errorf("files.GetFileMetadata: %w", err)
 	}
 
-	var response ListFilesResponse
+	var response FileMetadata
 
 	err = s.Client.ParseJsonBody(r, &response)
 	if err != nil {
-		return nil, fmt.Errorf("files.GetFileInfo(%v): %w", path, err)
+		return nil, fmt.Errorf("files.GetFileMetadata(%v): %w", path, err)
 	}
 
-	if len(response.Items) == 0 {
-		return nil, fmt.Errorf("files.GetFileInfo(%v): file not found", path)
-	}
-
-	if len(response.Items) > 1 {
-		log.Printf("ERROR: multiple files found for query (path=%v, name=%v): +%v", path, filename, response.Items)
-		return nil, fmt.Errorf("files.GetFileInfo(%v): multiple files found, did you point to a directory instead of a file?", path)
-	}
-
-	return &response.Items[0], nil
+	return &response, nil
 }
 
 type DeleteOptions struct {

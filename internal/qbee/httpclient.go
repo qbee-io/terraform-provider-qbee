@@ -106,12 +106,12 @@ func (c *HttpClient) Get(path string, q interface{}) (*http.Response, error) {
 
 	response, err := c.AuthenticatedRequest(req)
 	if err != nil {
-		return nil, fmt.Errorf("httpclient.Get(%v): %w", path, err)
+		return nil, fmt.Errorf("httpclient.Get(%v, %+v): %w", path, q, err)
 	}
 
 	err = checkResponse(*response)
 	if err != nil {
-		return nil, fmt.Errorf("httpclient.Get(%v): %w", path, err)
+		return nil, fmt.Errorf("httpclient.Get(%v, %+v): %w", path, q, err)
 	}
 
 	return response, nil

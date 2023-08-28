@@ -115,7 +115,7 @@ func TestListFiles(t *testing.T) {
 	got, err := client.Files.List()
 	assert.Nil(t, err)
 
-	wants := ListFilesResponse{Items: []FileInfo{
+	wants := ListFilesResponse{Items: []FileMetadata{
 		{Name: "test", Path: "/test/", IsDir: true, Created: 1685256027, Size: 0},
 		{Name: "upload", Path: "/test/upload/", IsDir: true, Created: 1685256027, Size: 0},
 		{Name: "upload_test.txt", Path: "/test/upload/upload_test.txt", IsDir: false, Created: 1685256027, Size: 4, Extension: "txt", Mime: "text/plain"},

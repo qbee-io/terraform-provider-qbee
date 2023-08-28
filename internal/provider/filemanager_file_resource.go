@@ -144,7 +144,7 @@ func (r *filemanagerFileResource) Read(ctx context.Context, req resource.ReadReq
 	fileName := state.Name.ValueString()
 
 	// Get the current file from Qbee
-	fileInfo, err := r.client.Files.GetFileInfo(fileParent, fileName)
+	fileInfo, err := r.client.Files.GetFileMetadata(fileParent + fileName)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading Qbee Filemanager data",
