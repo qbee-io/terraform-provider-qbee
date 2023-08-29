@@ -7,6 +7,26 @@ a qbee account using Terraform.
 
 - [Terraform](https://www.terraform.io/downloads.html) >= 1.0
 - [Go](https://golang.org/doc/install) >= 1.19
+- [Goreleaser](https://goreleaser.com/install/) >= 1.20
+
+## Installing the provider for local use
+
+Because the provider is not yet published to any registry, to use it, you need to build it for your
+current OS/ARCH and place it in the correct directory. To do so:
+
+```shell
+# From the directory of terraform-provider-qbee
+goreleaser build --single-target --clean
+```
+
+After this, the binary we built will be in ./dist/terraform-provider-qbee_OS_ARCH. Copy that to the
+terraform project where you want to use it:
+
+```shell
+# From the root of your terraform project (where your *.tf files are stored):
+mkdir -p ./terraform.d/plugins/terraform.local/qbee/qbee/
+cp <dist>.zip ./terraform.d/plugins/terraform.local/qbee/qbee/
+```
 
 ## Building The Provider
 
@@ -39,6 +59,9 @@ Fill this in for each provider
 ## Developing the Provider
 
 If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (see [Requirements](#requirements) above).
+
+Because this provider is hosted on a private bitbucket repository, we need to configure git to fetch it using our configured
+SSH credentials: `git config --global url."git@bitbucket.org:booqsoftware".insteadOf "https://bitbucket.org/booqsoftware"`
 
 To compile the provider, run `go install`. This will build the provider and put the provider binary in the `$GOPATH/bin` directory.
 
