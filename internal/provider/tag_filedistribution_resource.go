@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"bitbucket.org/booqsoftware/terraform-provider-qbee/internal/qbee"
 	"context"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -8,7 +9,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/lesteenman/terraform-provider-qbee/internal/qbee"
 )
 
 // Ensure the implementation satisfies the expected interfaces.

@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"bitbucket.org/booqsoftware/terraform-provider-qbee/internal/qbee"
 	"context"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -8,7 +9,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/lesteenman/terraform-provider-qbee/internal/qbee"
 	"os"
 )
 
