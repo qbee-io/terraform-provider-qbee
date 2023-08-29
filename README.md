@@ -67,13 +67,25 @@ To compile the provider, run `go install`. This will build the provider and put 
 
 To generate or update documentation, run `go generate`.
 
+### Acceptance tests
+
 In order to run the full suite of Acceptance tests, run `make testacc`.
 
-*Note:* Acceptance tests create real resources, and often cost money to run.
+*Note:* Acceptance tests create real resources. They are dependent on valid qbee credentials being
+configured in the environment (QBEE_USERNAME and QBEE_PASSWORD).
 
 ```shell
 make testacc
 ```
+
+If you want more control over what's run and output, you can do something like:
+
+```shell
+TF_LOG=INFO TF_ACC=1 go test -count=1 -run='TestAccTagFiledistributionGroupResource' -v ./internal/provider
+```
+
+Where:
+TF_LOG
 
 ## About
 

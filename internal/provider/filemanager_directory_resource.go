@@ -4,10 +4,12 @@ import (
 	"bitbucket.org/booqsoftware/terraform-provider-qbee/internal/qbee"
 	"context"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"path/filepath"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -16,8 +18,9 @@ import (
 
 // Ensure the implementation satisfies the expected interfaces.
 var (
-	_ resource.Resource              = &filemanagerDirectoryResource{}
-	_ resource.ResourceWithConfigure = &filemanagerDirectoryResource{}
+	_ resource.Resource                = &filemanagerDirectoryResource{}
+	_ resource.ResourceWithConfigure   = &filemanagerDirectoryResource{}
+	_ resource.ResourceWithImportState = &filemanagerDirectoryResource{}
 )
 
 func NewFilemanagerDirectoryResource() resource.Resource {
@@ -184,4 +187,16 @@ func (r *filemanagerDirectoryResource) Delete(ctx context.Context, req resource.
 			"could not delete filemanager directory, unexpected error: "+err.Error())
 		return
 	}
+}
+
+func (r *filemanagerDirectoryResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	cleanPath := filepath.Clean(req.ID)
+	filePath := cleanPath + "/"
+	fileParent := filepath.Dir(cleanPath) + "/"
+	fileName := filepath.Base(cleanPath)
+
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), "placeholder")...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("path"), filePath)...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("parent"), fileParent)...)
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("name"), fileName)...)
 }

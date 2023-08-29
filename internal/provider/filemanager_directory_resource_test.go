@@ -40,6 +40,13 @@ resource "qbee_filemanager_directory" "test" {
 					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "id", "placeholder"),
 				),
 			},
+			// Import testing
+			{
+				ResourceName:      "qbee_filemanager_directory.test",
+				ImportState:       true,
+				ImportStateId:     "/acctest/filemanager_directory/testdir-2/",
+				ImportStateVerify: true,
+			},
 		},
 	})
 }
