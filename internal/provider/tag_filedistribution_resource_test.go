@@ -53,6 +53,48 @@ resource "qbee_tag_filedistribution" "test" {
 					resource.TestCheckResourceAttr("qbee_tag_filedistribution.test", "files.0.parameters.0.value", "param-value"),
 				),
 			},
+			// Update
+			{
+				Config: providerConfig + `
+resource "qbee_tag_filedistribution" "test" {
+  tag = "terraform:acctest:tag"
+  extend = true
+  files = [
+    {
+      command = "/bin/true"
+      pre_condition = "date -u > /tmp/last-updated.txt"
+      templates = [
+        {
+          source = "/acctest/source2"
+          destination = "/tmp/target2"
+          is_template = false
+        }
+      ]
+	}
+  ]
+}
+`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("qbee_tag_filedistribution.test", "id", "placeholder"),
+					resource.TestCheckResourceAttr("qbee_tag_filedistribution.test", "tag", "terraform:acctest:tag"),
+					resource.TestCheckResourceAttr("qbee_tag_filedistribution.test", "extend", "true"),
+					resource.TestCheckResourceAttr("qbee_tag_filedistribution.test", "files.#", "1"),
+					resource.TestCheckResourceAttr("qbee_tag_filedistribution.test", "files.0.command", "/bin/true"),
+					resource.TestCheckResourceAttr("qbee_tag_filedistribution.test", "files.0.pre_condition", "date -u > /tmp/last-updated.txt"),
+					resource.TestCheckResourceAttr("qbee_tag_filedistribution.test", "files.0.templates.#", "1"),
+					resource.TestCheckResourceAttr("qbee_tag_filedistribution.test", "files.0.templates.0.source", "/acctest/source2"),
+					resource.TestCheckResourceAttr("qbee_tag_filedistribution.test", "files.0.templates.0.destination", "/tmp/target2"),
+					resource.TestCheckResourceAttr("qbee_tag_filedistribution.test", "files.0.templates.0.is_template", "false"),
+					resource.TestCheckResourceAttr("qbee_tag_filedistribution.test", "files.0.parameters.#", "0"),
+				),
+			},
+			// Import testing
+			{
+				ResourceName:      "qbee_tag_filedistribution.test",
+				ImportState:       true,
+				ImportStateId:     "terraform:acctest:tag",
+				ImportStateVerify: true,
+			},
 		},
 	})
 }
