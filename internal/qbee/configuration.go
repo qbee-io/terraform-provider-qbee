@@ -71,6 +71,7 @@ type ChangeResponse struct {
 	Sha     string `json:"sha"`
 	Content struct {
 		Tag      string `json:"tag"`
+		NodeId   string `json:"node_id"`
 		FormType string `json:"form_type"`
 		Config   struct {
 			Enabled        bool          `json:"enabled"`

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - qbee_tag_filedistribution resources can now be imported
+- Support for the qbee_node_filedistribution resource
 
 ## [0.2.0] - 2023-08-29
 

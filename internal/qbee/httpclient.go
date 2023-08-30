@@ -28,7 +28,7 @@ type HttpClient struct {
 	Inventory     *InventoryService
 	Files         *FilesService
 	Grouptree     *GrouptreeService
-	TagConfig     *TagConfigService
+	Config        *ConfigService
 	Configuration *ConfigurationService
 }
 
@@ -87,7 +87,7 @@ func NewClient(username string, password string, options ...ClientOptionFunc) (*
 	c.Files = &FilesService{Client: c}
 	c.Grouptree = &GrouptreeService{Client: c}
 	c.Configuration = &ConfigurationService{Client: c}
-	c.TagConfig = &TagConfigService{Client: c}
+	c.Config = &ConfigService{Client: c}
 
 	return c, nil
 }

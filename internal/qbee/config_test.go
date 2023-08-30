@@ -38,7 +38,7 @@ func TestGetFiledistribution(t *testing.T) {
 		fmt.Fprint(w, string(c))
 	})
 
-	got, err := client.TagConfig.GetFiledistribution(tagId)
+	got, err := client.Config.GetTagFiledistribution(tagId)
 	assert.Nil(t, err)
 
 	wants := GetFileDistributionResponse{
