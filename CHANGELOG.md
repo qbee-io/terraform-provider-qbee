@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2023-08-31
+
 ### Added
 
+- qbee_filemanager_directory resources can now be imported
 - qbee_tag_filedistribution resources can now be imported
 - Support for the qbee_node_filedistribution resource
 
@@ -20,12 +23,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The qbee_filemanager_directory now detects resource drift
 - The qbee_filemanager_file now detects resource drift
 - The qbee_tag_filedistribution now correctly handles unset command and pre_condition attributes
-
-## [0.2.0] - 2023-08-29
-
-### Added
-
-- qbee_filemanager_directory resources can now be imported
 
 ## [0.1.0] - 2023-08-29
 
