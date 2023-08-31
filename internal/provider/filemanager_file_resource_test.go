@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
@@ -14,33 +15,30 @@ func TestAccFilemanagerFileResource(t *testing.T) {
 			{
 				Config: providerConfig + `
 resource "qbee_filemanager_file" "test" {
-	parent = "/acctest/filemanager_file/"
+	path = "/acctest/filemanager_file/file1.txt"
 	sourcefile = "testfiles/file1.txt"
 	file_sha256 = filesha256("testfiles/file1.txt")
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_filemanager_file.test", "path", "/acctest/filemanager_file/file1.txt"),
-					resource.TestCheckResourceAttr("qbee_filemanager_file.test", "parent", "/acctest/filemanager_file/"),
-					resource.TestCheckResourceAttr("qbee_filemanager_file.test", "name", "file1.txt"),
 					resource.TestCheckResourceAttr("qbee_filemanager_file.test", "id", "placeholder"),
+					resource.TestMatchResourceAttr("qbee_filemanager_file.test", "file_sha256", regexp.MustCompile("^[a-fA-F0-9]{64}$")),
 				),
 			},
 			// Update test
 			{
 				Config: providerConfig + `
 resource "qbee_filemanager_file" "test" {
-	parent = "/acctest/filemanager_file/"
-	name = "alt_filename.txt"
+	path = "/acctest/filemanager_file/alt_filename.txt"
 	sourcefile = "testfiles/file2.txt"
 	file_sha256 = filesha256("testfiles/file2.txt")
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_filemanager_file.test", "path", "/acctest/filemanager_file/alt_filename.txt"),
-					resource.TestCheckResourceAttr("qbee_filemanager_file.test", "parent", "/acctest/filemanager_file/"),
-					resource.TestCheckResourceAttr("qbee_filemanager_file.test", "name", "alt_filename.txt"),
 					resource.TestCheckResourceAttr("qbee_filemanager_file.test", "id", "placeholder"),
+					resource.TestMatchResourceAttr("qbee_filemanager_file.test", "file_sha256", regexp.MustCompile("^[a-fA-F0-9]{64}$")),
 				),
 			},
 			// Import testing

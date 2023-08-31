@@ -57,16 +57,6 @@ type grouptreeModificationData struct {
 	Type        string `json:"type"`
 }
 
-type GrouptreeModificationResponse struct {
-	Sha     string         `json:"sha"`
-	UserId  string         `json:"user_id"`
-	Changes string         `json:"changes"`
-	Type    string         `json:"type"`
-	Message string         `json:"message"`
-	Created uint64         `json:"created"`
-	Error   *ErrorResponse `json:"error"`
-}
-
 func (s GrouptreeService) Create(id string, ancestor string, title string) error {
 	changes := []grouptreeChanges{
 		{

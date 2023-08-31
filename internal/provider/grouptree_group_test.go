@@ -31,13 +31,13 @@ resource "qbee_grouptree_group" "test" {
 resource "qbee_grouptree_group" "test" {
 	id = "group-under-tf-test"
 	ancestor = "integrationtests"
-	title = "Testing Terraform - Path 2"
+	title = "Testing Terraform - RequestURI 2"
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_grouptree_group.test", "id", "group-under-tf-test"),
 					resource.TestCheckResourceAttr("qbee_grouptree_group.test", "ancestor", "integrationtests"),
-					resource.TestCheckResourceAttr("qbee_grouptree_group.test", "title", "Testing Terraform - Path 2"),
+					resource.TestCheckResourceAttr("qbee_grouptree_group.test", "title", "Testing Terraform - RequestURI 2"),
 				),
 			},
 			// Move test
@@ -46,13 +46,13 @@ resource "qbee_grouptree_group" "test" {
 resource "qbee_grouptree_group" "test" {
 	id = "group-under-tf-test"
 	ancestor = "root"
-	title = "Testing Terraform - Path 2"
+	title = "Testing Terraform - RequestURI 2"
 }
 			`,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_grouptree_group.test", "id", "group-under-tf-test"),
 					resource.TestCheckResourceAttr("qbee_grouptree_group.test", "ancestor", "root"),
-					resource.TestCheckResourceAttr("qbee_grouptree_group.test", "title", "Testing Terraform - Path 2"),
+					resource.TestCheckResourceAttr("qbee_grouptree_group.test", "title", "Testing Terraform - RequestURI 2"),
 				),
 			},
 			// Double update test

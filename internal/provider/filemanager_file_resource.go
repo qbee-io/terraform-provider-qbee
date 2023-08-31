@@ -3,6 +3,7 @@ package provider
 import (
 	"bitbucket.org/booqsoftware/terraform-provider-qbee/internal/qbee"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -12,7 +13,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"path/filepath"
-	"strings"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -53,20 +53,9 @@ func (r *filemanagerFileResource) Schema(_ context.Context, _ resource.SchemaReq
 				Description: "Placeholder ID value",
 			},
 			"path": schema.StringAttribute{
-				Computed:            true,
-				MarkdownDescription: "The full path of the directory. Equal to `{parent}/{name}`.",
-			},
-			"parent": schema.StringAttribute{
-				Required:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-				Description: "The parent directory of the file. Must include a trailing slash. " +
-					"The parent will be created as an unmanaged directory if it does not yet exist.",
-			},
-			"name": schema.StringAttribute{
-				Computed:      true,
-				Optional:      true,
-				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
-				Description:   "The name of the directory. Defaults to the name of the sourcefile if left empty.",
+				Required:            true,
+				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
+				MarkdownDescription: "The full path of the uploaded file.",
 			},
 			"sourcefile": schema.StringAttribute{
 				Required:      true,
@@ -86,8 +75,6 @@ func (r *filemanagerFileResource) Schema(_ context.Context, _ resource.SchemaReq
 type filemanagerFileResourceModel struct {
 	ID         types.String `tfsdk:"id"`
 	Path       types.String `tfsdk:"path"`
-	Parent     types.String `tfsdk:"parent"`
-	Name       types.String `tfsdk:"name"`
 	SourceFile types.String `tfsdk:"sourcefile"`
 	FileSha256 types.String `tfsdk:"file_sha256"`
 }
@@ -103,11 +90,13 @@ func (r *filemanagerFileResource) Create(ctx context.Context, req resource.Creat
 	}
 
 	// Upload the file
-	parent := plan.Parent.ValueString()
+	uploadPath := plan.Path.ValueString()
+	pathCleaned := filepath.Clean(uploadPath)
+	fileDirectory := filepath.Dir(pathCleaned)
+	fileName := filepath.Base(pathCleaned)
 	sourceFile := plan.SourceFile.ValueString()
-	filename := plan.Name.ValueString()
-	tflog.Info(ctx, fmt.Sprintf("Uploading file %v to %v/%v", sourceFile, parent, filename))
-	uploadFileResponse, err := r.client.Files.Upload(sourceFile, parent, filename)
+	tflog.Info(ctx, fmt.Sprintf("Uploading file %v to %v/%v", sourceFile, fileDirectory, fileName))
+	_, err := r.client.Files.Upload(sourceFile, fileDirectory, fileName)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating filemanager_file",
@@ -116,11 +105,7 @@ func (r *filemanagerFileResource) Create(ctx context.Context, req resource.Creat
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	trimmedParent := strings.TrimSuffix(uploadFileResponse.Path, "/")
-
 	plan.ID = types.StringValue("placeholder")
-	plan.Path = types.StringValue(fmt.Sprintf("%v/%v", trimmedParent, uploadFileResponse.File))
-	plan.Name = types.StringValue(uploadFileResponse.File)
 
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
@@ -140,11 +125,18 @@ func (r *filemanagerFileResource) Read(ctx context.Context, req resource.ReadReq
 		return
 	}
 
-	fileParent := state.Parent.ValueString()
-	fileName := state.Name.ValueString()
+	filePath := state.Path.ValueString()
 
 	// Get the current file from Qbee
-	fileInfo, err := r.client.Files.GetMetadata(fileParent + fileName)
+	fileInfo, err := r.client.Files.GetMetadata(filePath)
+
+	// If the file is not found, we have drift, and it was deleted from qbee
+	if errors.Is(err, qbee.ErrFileNotFound) {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	// Any other error is unexpected
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading Qbee Filemanager data",
@@ -152,7 +144,7 @@ func (r *filemanagerFileResource) Read(ctx context.Context, req resource.ReadReq
 		return
 	}
 
-	// Update the current state
+	// If the file was found, update the current state
 	state.ID = types.StringValue("placeholder")
 	state.FileSha256 = types.StringValue(fileInfo.Digest)
 
@@ -190,11 +182,5 @@ func (r *filemanagerFileResource) Delete(ctx context.Context, req resource.Delet
 }
 
 func (r *filemanagerFileResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	filePath := req.ID
-	fileParent := filepath.Dir(filePath) + "/"
-	fileName := filepath.Base(filePath)
-
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("path"), filePath)...)
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("parent"), fileParent)...)
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("name"), fileName)...)
+	resource.ImportStatePassthroughID(ctx, path.Root("path"), req, resp)
 }

@@ -3,6 +3,7 @@ package provider
 import (
 	"bitbucket.org/booqsoftware/terraform-provider-qbee/internal/qbee"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -114,6 +115,14 @@ func (r *filemanagerDirectoryResource) Read(ctx context.Context, req resource.Re
 	directoryPath := state.Path.ValueString()
 
 	listFilesResponse, err := r.client.Files.GetMetadata(directoryPath)
+
+	// If the directory is not found, we have drift, and it was deleted from qbee
+	if errors.Is(err, qbee.ErrFileNotFound) {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	// Any other error is unexpected
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error reading Qbee Filemanager data",
@@ -121,16 +130,15 @@ func (r *filemanagerDirectoryResource) Read(ctx context.Context, req resource.Re
 		return
 	}
 
-	exists := listFilesResponse.IsDir
-
 	// Delete from the state if it no longer exists
-	if exists {
-		state.ID = types.StringValue("placeholder")
-		state.Path = types.StringValue(directoryPath)
-	} else {
+	if !listFilesResponse.IsDir {
 		resp.State.RemoveResource(ctx)
+		return
 	}
 
+	// Update the state
+	state.ID = types.StringValue("placeholder")
+	state.Path = types.StringValue(directoryPath)
 	resp.State.Set(ctx, state)
 }
 

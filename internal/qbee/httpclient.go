@@ -32,9 +32,23 @@ type HttpClient struct {
 	Configuration *ConfigurationService
 }
 
-type ErrorResponse struct {
+type QbeeApiErrorResponse struct {
+	Error QbeeApiError `json:"error"`
+}
+
+type QbeeHttpClientError struct {
+	ApiError   QbeeApiError
+	Method     string
+	RequestURI string
+}
+
+type QbeeApiError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
+}
+
+func (e QbeeHttpClientError) Error() string {
+	return fmt.Sprintf("Unexpected response from Qbee; request=(method=%v, path=%v), response=(status_code=%v, message='%v')", e.Method, e.RequestURI, e.ApiError.Code, e.ApiError.Message)
 }
 
 type ClientOptionFunc func(*HttpClient) error
@@ -106,12 +120,7 @@ func (c *HttpClient) Get(path string, q interface{}) (*http.Response, error) {
 
 	response, err := c.AuthenticatedRequest(req)
 	if err != nil {
-		return nil, fmt.Errorf("httpclient.Get(%v, %+v): %w", path, q, err)
-	}
-
-	err = checkResponse(*response)
-	if err != nil {
-		return nil, fmt.Errorf("httpclient.Get(%v, %+v): %w", path, q, err)
+		return nil, err
 	}
 
 	return response, nil
@@ -187,26 +196,26 @@ func (c *HttpClient) UploadFile(path string, body io.Reader, contentType string)
 
 	response, err := c.AuthenticatedRequest(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to make authenticated request to %s: %w", path, err)
-	}
-
-	err = checkResponse(*response)
-	if err != nil {
-		return nil, fmt.Errorf("httpclient.UploadFile: %w", err)
+		return nil, err
 	}
 
 	return response, nil
 }
 
-func checkResponse(r http.Response) error {
+func (c *HttpClient) checkResponse(r http.Response) error {
 	s := r.StatusCode
 	if s >= 300 {
-		b, err := io.ReadAll(r.Body)
+		var errorResponse QbeeApiErrorResponse
+		err := c.ParseJsonBody(&r, &errorResponse)
 		if err != nil {
-			return fmt.Errorf("could not read body: %w", err)
+			return fmt.Errorf("could not read body: method=%v, uri=%v, %w", r.Request.Method, r.Request.RequestURI, err)
 		}
 
-		return fmt.Errorf("non-OK status code '%v' (body='%v')", s, string(b))
+		return QbeeHttpClientError{
+			ApiError:   errorResponse.Error,
+			Method:     r.Request.Method,
+			RequestURI: r.Request.RequestURI,
+		}
 	}
 
 	return nil
@@ -226,9 +235,9 @@ func (c *HttpClient) AuthenticatedRequest(req *http.Request) (*http.Response, er
 		return nil, fmt.Errorf("error while executing HTTP request %v: %w", req, err)
 	}
 
-	err = checkResponse(*resp)
+	err = c.checkResponse(*resp)
 	if err != nil {
-		return nil, fmt.Errorf("non-200 http code returned by authenticated request: %w", err)
+		return nil, err
 	}
 
 	return resp, nil
@@ -303,6 +312,8 @@ func (c *HttpClient) ParseJsonBody(r *http.Response, response any) error {
 		log.Printf("error while reading body from response: %v", r)
 		return err
 	}
+
+	log.Printf("raw json: %v", string(b))
 
 	err = json.Unmarshal(b, &response)
 	if err != nil {

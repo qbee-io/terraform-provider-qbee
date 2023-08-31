@@ -3,12 +3,14 @@ package qbee
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"mime/multipart"
 	"os"
 	"path/filepath"
+	"reflect"
 )
 
 type FilesService struct {
@@ -136,6 +138,8 @@ type getFileMetadata struct {
 	Path string `url:"path"`
 }
 
+var ErrFileNotFound = errors.New("file not found")
+
 func (s *FilesService) GetMetadata(path string) (*FileMetadata, error) {
 	r, err := s.Client.Get("/file/metadata", getFileMetadata{
 		Path: path,
@@ -143,6 +147,18 @@ func (s *FilesService) GetMetadata(path string) (*FileMetadata, error) {
 
 	if err != nil {
 		log.Printf("Err in Client.Get: %v", err)
+
+		var re QbeeHttpClientError
+		if errors.As(err, &re) {
+			var apiErr = re.ApiError
+			log.Printf("Error is a valid QbeeApiError: code=%v, message=%v", apiErr.Code, apiErr.Message)
+			if apiErr.Code == 404 && apiErr.Message == "File not found" {
+				return nil, ErrFileNotFound
+			}
+		} else {
+			log.Printf("Could not cast err %+v (typeof=%v, kind=%v) to a QbeeHttpClientError", err, reflect.TypeOf(err), reflect.ValueOf(err).Kind())
+		}
+
 		return nil, fmt.Errorf("files.GetMetadata: %w", err)
 	}
 
