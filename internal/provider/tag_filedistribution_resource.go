@@ -182,14 +182,14 @@ func (r *tagFiledistributionResource) writeFiledistribution(ctx context.Context,
 	tag := plan.Tag.ValueString()
 	extend := plan.Extend.ValueBool()
 
-	var files []FiledistributionFile
+	var files []filedistributionFile
 	diags := plan.Files.ElementsAs(ctx, &files, false)
 	if diags.HasError() {
 		// Note: this might silence some warnings... Redo at some point.
 		return fmt.Errorf("%v: %v", diags.Errors()[0].Summary(), diags.Errors()[0].Detail())
 	}
 
-	filesets := PlanToQbeeFilesets(ctx, files)
+	filesets := planToQbeeFilesets(ctx, files)
 
 	// Create the resource
 	tflog.Info(ctx, fmt.Sprintf("Creating file distribution for tag %v with %v filesets", tag, len(filesets)))

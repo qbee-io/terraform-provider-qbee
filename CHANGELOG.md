@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The qbee_filemanager_file resource now uses a 'path' attribute to replace 'parent' and 'name'.
 - The qbee_filemanager_directory now detects resource drift
 - The qbee_filemanager_file now detects resource drift
+- The qbee_tag_filedistribution now correctly handles unset command and pre_condition attributes
 
 ## [0.2.0] - 2023-08-29
 

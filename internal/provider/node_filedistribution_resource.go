@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
@@ -183,14 +182,14 @@ func (r *nodeFiledistributionResource) writeFiledistribution(ctx context.Context
 	nodeId := plan.Node.ValueString()
 	extend := plan.Extend.ValueBool()
 
-	var files []FiledistributionFile
+	var files []filedistributionFile
 	diags := plan.Files.ElementsAs(ctx, &files, false)
 	if diags.HasError() {
 		// Note: this might silence some warnings... Redo at some point.
 		return fmt.Errorf("%v: %v", diags.Errors()[0].Summary(), diags.Errors()[0].Detail())
 	}
 
-	filesets := PlanToQbeeFilesets(ctx, files)
+	filesets := planToQbeeFilesets(ctx, files)
 
 	// Create the resource
 	tflog.Info(ctx, fmt.Sprintf("Creating file distribution for nodeId %v with %v filesets", nodeId, len(filesets)))
@@ -214,7 +213,7 @@ func (r *nodeFiledistributionResource) writeFiledistribution(ctx context.Context
 	return nil
 }
 
-func (r *nodeFiledistributionResource) createFilesets(ctx context.Context, files []FiledistributionFile) []qbee.FilesetConfig {
+func (r *nodeFiledistributionResource) createFilesets(ctx context.Context, files []filedistributionFile) []qbee.FilesetConfig {
 	var filesets []qbee.FilesetConfig
 
 	for _, file := range files {
@@ -228,7 +227,7 @@ func (r *nodeFiledistributionResource) createFilesets(ctx context.Context, files
 			fsc.Command = file.Command.ValueString()
 		}
 
-		var paramValues []FiledistributionParameter
+		var paramValues []filedistributionParameter
 		file.Parameters.ElementsAs(ctx, &paramValues, false)
 		var params []qbee.FilesetParameter
 		for _, value := range paramValues {
@@ -238,7 +237,7 @@ func (r *nodeFiledistributionResource) createFilesets(ctx context.Context, files
 			})
 		}
 
-		var templateValues []FiledistributionTemplate
+		var templateValues []filedistributionTemplate
 		file.Templates.ElementsAs(ctx, &templateValues, false)
 		var templates []qbee.FilesetTemplate
 		for _, value := range templateValues {
@@ -292,66 +291,6 @@ func (r *nodeFiledistributionResource) Read(ctx context.Context, req resource.Re
 	state.Files = fileValues
 
 	resp.State.Set(ctx, state)
-}
-
-func filedistributionToListValue(ctx context.Context, filedistribution *qbee.GetFileDistributionResponse, resp *resource.ReadResponse) basetypes.ListValue {
-	var files []FiledistributionFile
-
-	for _, file := range filedistribution.Files {
-		files = append(files, FiledistributionFile{
-			Command:      types.StringValue(file.Command),
-			PreCondition: types.StringValue(file.PreCondition),
-			Templates:    templatesToListValue(ctx, file.Templates, resp),
-			Parameters:   parametersToListValue(ctx, file.Parameters, resp),
-		})
-	}
-
-	fileValues, diags := types.ListValueFrom(ctx, types.ObjectType{
-		AttrTypes: FiledistributionFile{}.attrTypes(),
-	}, files)
-	resp.Diagnostics.Append(diags...)
-	return fileValues
-}
-
-func templatesToListValue(ctx context.Context, templates []qbee.FiledistributionFileTemplateResponse, resp *resource.ReadResponse) types.List {
-	if templates == nil {
-		return types.ListNull(basetypes.ObjectType{
-			AttrTypes: FiledistributionTemplate{}.attrTypes(),
-		})
-	}
-
-	var result []FiledistributionTemplate
-	for _, template := range templates {
-		result = append(result, FiledistributionTemplate{
-			Source:      types.StringValue(template.Source),
-			Destination: types.StringValue(template.Destination),
-			IsTemplate:  types.BoolValue(template.IsTemplate),
-		})
-	}
-
-	templatesValue, diags := types.ListValueFrom(ctx, basetypes.ObjectType{AttrTypes: FiledistributionTemplate{}.attrTypes()}, result)
-	resp.Diagnostics.Append(diags...)
-	return templatesValue
-}
-
-func parametersToListValue(ctx context.Context, parameters []qbee.FiledistributionFileParameterResponse, resp *resource.ReadResponse) basetypes.ListValue {
-	if parameters == nil {
-		return types.ListNull(basetypes.ObjectType{
-			AttrTypes: FiledistributionParameter{}.attrTypes(),
-		})
-	}
-
-	var result []FiledistributionParameter
-	for _, parameter := range parameters {
-		result = append(result, FiledistributionParameter{
-			Key:   types.StringValue(parameter.Key),
-			Value: types.StringValue(parameter.Value),
-		})
-	}
-
-	parametersValue, diags := types.ListValueFrom(ctx, basetypes.ObjectType{AttrTypes: FiledistributionParameter{}.attrTypes()}, result)
-	resp.Diagnostics.Append(diags...)
-	return parametersValue
 }
 
 // Delete deletes the resource and removes the Terraform state on success.
