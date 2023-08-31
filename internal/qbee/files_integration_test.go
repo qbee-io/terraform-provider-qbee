@@ -80,7 +80,7 @@ func Test_file_lifecycle(t *testing.T) {
 	})
 
 	t.Run("it should be able to get info on that specific file", func(t *testing.T) {
-		got, err := filesService.GetFileMetadata(uploadedPath)
+		got, err := filesService.GetMetadata(uploadedPath)
 
 		require.Nil(t, err)
 
@@ -102,7 +102,7 @@ func Test_file_lifecycle(t *testing.T) {
 	})
 
 	t.Run("it should no longer find the file afterward", func(t *testing.T) {
-		_, err := filesService.GetFileMetadata(uploadedPath)
+		_, err := filesService.GetMetadata(uploadedPath)
 
 		assert.NotNil(t, err)
 	})

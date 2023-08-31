@@ -7,8 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
 - qbee_tag_filedistribution resources can now be imported
 - Support for the qbee_node_filedistribution resource
+
+### Changed
+
+- The qbee_filemanager_directory resource now has a single required attribute, 'path', replacing 
+  'parent' and 'name' and the computed 'path' attributes.
 
 ## [0.2.0] - 2023-08-29
 

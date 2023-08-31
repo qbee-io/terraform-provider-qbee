@@ -14,14 +14,11 @@ func TestAccFilemanagerDirectoryResource(t *testing.T) {
 			{
 				Config: providerConfig + `
 resource "qbee_filemanager_directory" "test" {
-	parent = "/acctest/filemanager_directory/"
-	name = "testdir"
+	path = "/acctest/filemanager_directory/testdir"
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "path", "/acctest/filemanager_directory/testdir/"),
-					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "parent", "/acctest/filemanager_directory/"),
-					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "name", "testdir"),
+					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "path", "/acctest/filemanager_directory/testdir"),
 					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "id", "placeholder"),
 				),
 			},
@@ -29,14 +26,11 @@ resource "qbee_filemanager_directory" "test" {
 			{
 				Config: providerConfig + `
 resource "qbee_filemanager_directory" "test" {
-	parent = "/acctest/filemanager_directory/"
-	name = "testdir-2"
+	path = "/acctest/filemanager_directory/testdir-2"
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "path", "/acctest/filemanager_directory/testdir-2/"),
-					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "parent", "/acctest/filemanager_directory/"),
-					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "name", "testdir-2"),
+					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "path", "/acctest/filemanager_directory/testdir-2"),
 					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "id", "placeholder"),
 				),
 			},
@@ -44,7 +38,7 @@ resource "qbee_filemanager_directory" "test" {
 			{
 				ResourceName:      "qbee_filemanager_directory.test",
 				ImportState:       true,
-				ImportStateId:     "/acctest/filemanager_directory/testdir-2/",
+				ImportStateId:     "/acctest/filemanager_directory/testdir-2",
 				ImportStateVerify: true,
 			},
 		},

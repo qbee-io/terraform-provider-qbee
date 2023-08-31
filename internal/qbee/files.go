@@ -136,21 +136,21 @@ type getFileMetadata struct {
 	Path string `url:"path"`
 }
 
-func (s *FilesService) GetFileMetadata(path string) (*FileMetadata, error) {
+func (s *FilesService) GetMetadata(path string) (*FileMetadata, error) {
 	r, err := s.Client.Get("/file/metadata", getFileMetadata{
 		Path: path,
 	})
 
 	if err != nil {
 		log.Printf("Err in Client.Get: %v", err)
-		return nil, fmt.Errorf("files.GetFileMetadata: %w", err)
+		return nil, fmt.Errorf("files.GetMetadata: %w", err)
 	}
 
 	var response FileMetadata
 
 	err = s.Client.ParseJsonBody(r, &response)
 	if err != nil {
-		return nil, fmt.Errorf("files.GetFileMetadata(%v): %w", path, err)
+		return nil, fmt.Errorf("files.GetMetadata(%v): %w", path, err)
 	}
 
 	return &response, nil
