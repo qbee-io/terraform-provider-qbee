@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     qbee = {
-      source = "lesteenman/qbee"
+      source = "terraform.booqsoftware.com/qbee/qbee"
     }
   }
 }
@@ -10,18 +10,17 @@ provider "qbee" {
 }
 
 resource "qbee_filemanager_directory" "filedist_demo" {
-  parent = "/"
-  name   = "filedist-demo"
+  path = "/filedist-demo"
 }
 
 resource "qbee_filemanager_file" "filedist_demo_1" {
-  parent      = qbee_filemanager_directory.filedist_demo.path
+  path      = "${qbee_filemanager_directory.filedist_demo.path}/file1.txt"
   sourcefile  = "files/file1.txt"
   file_sha256 = filesha256("${path.module}/files/file1.txt")
 }
 
 resource "qbee_filemanager_file" "filedist_demo_2" {
-  parent      = qbee_filemanager_directory.filedist_demo.path
+  path      = "${qbee_filemanager_directory.filedist_demo.path}/file2.json"
   sourcefile  = "files/file2.json"
   file_sha256 = filesha256("${path.module}/files/file2.json")
 }

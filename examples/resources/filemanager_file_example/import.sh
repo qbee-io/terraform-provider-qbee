@@ -1,2 +1,2 @@
-# Filemanager directory can be imported by specifying the full path, with a trailing slash, as the identifier.
-terraform import qbee_filemanager_directory.example /full/path/with/trailing/slash/
+# Filemanager file can be imported by specifying the full path as the identifier.
+terraform import qbee_filemanager_file.example /full/path/to/file.txt
