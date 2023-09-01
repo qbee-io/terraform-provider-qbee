@@ -165,17 +165,17 @@ type FiledistributionFileParameterResponse struct {
 	Value string `json:"value"`
 }
 
-func (s ConfigurationService) GetConfiguration(nodeType string, tag string) (*GetConfigurationResponse, error) {
-	r, err := s.Client.Get(fmt.Sprintf("/config/%v/%v", nodeType, tag), nil)
+func (s ConfigurationService) GetConfiguration(ct ConfigType, identifier string) (*GetConfigurationResponse, error) {
+	r, err := s.Client.Get(fmt.Sprintf("/config/%v/%v", ct.String(), identifier), nil)
 	if err != nil {
-		return nil, fmt.Errorf("ConfigurationService.GetConfiguration(%v, %v): %w", nodeType, tag, err)
+		return nil, fmt.Errorf("ConfigurationService.GetConfiguration(%v, %v): %w", ct.String(), identifier, err)
 	}
 
 	var response GetConfigurationResponse
 
 	err = s.Client.ParseJsonBody(r, &response)
 	if err != nil {
-		return nil, fmt.Errorf("ConfigurationService.GetConfiguration(%v, %v): %w", nodeType, tag, err)
+		return nil, fmt.Errorf("ConfigurationService.GetConfiguration(%v, %v): %w", ct.String(), identifier, err)
 	}
 
 	return &response, nil

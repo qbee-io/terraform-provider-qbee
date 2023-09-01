@@ -1,5 +1,6 @@
-resource "qbee_node_filedistribution" "example" {
-  node = "root"
+resource "qbee_filedistribution" "example_tag" {
+  tag = "example_tag"
+
   extend = true
   files = [
     {
@@ -25,6 +26,23 @@ resource "qbee_node_filedistribution" "example" {
         {
           key = "param-key-2"
           value = "param-value-2"
+        }
+      ]
+    }
+  ]
+}
+
+resource "qbee_filedistribution" "example_node" {
+  node = "example_node"
+
+  extend = true
+  files = [
+    {
+      templates = [
+        {
+          source = "/example/file2.json"
+          destination = "/target/path2.json"
+          is_template = false
         }
       ]
     }

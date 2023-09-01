@@ -1,6 +1,6 @@
-resource "qbee_node_filedistribution" "example" {
-  tag = "example:tag"
-
+resource "qbee_softwaremanagement" "example" {
+  node = "root"
+  # or 'tag = "tagname"'
   extend = true
   files = [
     {

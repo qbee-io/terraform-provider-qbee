@@ -1,8 +1,6 @@
 package qbee
 
 import (
-	"encoding/json"
-	"io"
 	"os"
 )
 
@@ -12,20 +10,10 @@ type localTestConfig struct {
 }
 
 func CreateTestClient() (*HttpClient, error) {
-	f, err := os.Open("local-testing.json")
-	if err != nil {
-		return nil, err
+	config := localTestConfig{
+		Username: os.Getenv("QBEE_USERNAME"),
+		Password: os.Getenv("QBEE_PASSWORD"),
 	}
 
-	byteValue, _ := io.ReadAll(f)
-
-	var config localTestConfig
-
-	err = json.Unmarshal(byteValue, &config)
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := NewClient(config.Username, config.Password)
-	return client, nil
+	return NewClient(config.Username, config.Password)
 }
