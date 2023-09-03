@@ -6,7 +6,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
-func TestAccFiledistributionGroupResource(t *testing.T) {
+func TestAccFiledistributionResource(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
@@ -14,7 +14,7 @@ func TestAccFiledistributionGroupResource(t *testing.T) {
 			{
 				Config: providerConfig + `
 resource "qbee_filedistribution" "test" {
-  tag = "terraform:acctest:tag"
+  tag = "terraform:acctest:filedistribution"
   extend = true
   files = [
     {
@@ -31,7 +31,7 @@ resource "qbee_filedistribution" "test" {
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "id", "placeholder"),
-					resource.TestCheckResourceAttr("qbee_filedistribution.test", "tag", "terraform:acctest:tag"),
+					resource.TestCheckResourceAttr("qbee_filedistribution.test", "tag", "terraform:acctest:filedistribution"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "extend", "true"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "files.#", "1"),
 					resource.TestCheckNoResourceAttr("qbee_filedistribution.test", "files.0.command"),
@@ -47,7 +47,7 @@ resource "qbee_filedistribution" "test" {
 			{
 				Config: providerConfig + `
 resource "qbee_filedistribution" "test" {
-  tag = "terraform:acctest:tag"
+  tag = "terraform:acctest:filedistribution"
   extend = true
   files = [
     {
@@ -64,7 +64,7 @@ resource "qbee_filedistribution" "test" {
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "id", "placeholder"),
-					resource.TestCheckResourceAttr("qbee_filedistribution.test", "tag", "terraform:acctest:tag"),
+					resource.TestCheckResourceAttr("qbee_filedistribution.test", "tag", "terraform:acctest:filedistribution"),
 					resource.TestCheckNoResourceAttr("qbee_filedistribution.test", "node"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "extend", "true"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "files.#", "1"),
@@ -115,7 +115,7 @@ resource "qbee_filedistribution" "test" {
 			{
 				Config: providerConfig + `
 resource "qbee_filedistribution" "test" {
-  tag = "terraform:acctest:tag"
+  tag = "terraform:acctest:filedistribution"
   extend = true
   files = [
     {
@@ -140,7 +140,7 @@ resource "qbee_filedistribution" "test" {
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "id", "placeholder"),
-					resource.TestCheckResourceAttr("qbee_filedistribution.test", "tag", "terraform:acctest:tag"),
+					resource.TestCheckResourceAttr("qbee_filedistribution.test", "tag", "terraform:acctest:filedistribution"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "extend", "true"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "files.#", "1"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "files.0.command", "date -u > /tmp/last-updated.txt"),
@@ -158,7 +158,7 @@ resource "qbee_filedistribution" "test" {
 			{
 				ResourceName:      "qbee_filedistribution.test",
 				ImportState:       true,
-				ImportStateId:     "tag:terraform:acctest:tag",
+				ImportStateId:     "tag:terraform:acctest:filedistribution",
 				ImportStateVerify: true,
 			},
 		},

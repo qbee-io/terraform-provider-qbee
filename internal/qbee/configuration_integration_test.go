@@ -4,40 +4,179 @@ package qbee
 
 import (
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func Test_change_lifecycle(t *testing.T) {
 	client, err := CreateTestClient()
-	if err != nil {
-		t.Log(err)
-		t.Fatalf("Could not create test Client")
+	require.Nil(t, err)
+
+	tagName := "terraform:configuration-integrationtest"
+
+	testFiles := []FiledistributionFile{
+		{
+			PreCondition: "",
+			Command:      "",
+			Templates: []FiledistributionTemplate{
+				{
+					Source:      "/some/source",
+					Destination: "/other/dest",
+					IsTemplate:  true,
+				},
+			},
+			Parameters: []FiledistributionParameter{
+				{
+					Key:   "key",
+					Value: "value",
+				},
+			},
+		},
 	}
 
-	changeService := ConfigurationService{Client: client}
+	var testSoftwareItems = []SoftwareManagementItem{
+		{
+			Package:      "TestPackage",
+			ServiceName:  "TestName",
+			PreCondition: "/bin/true",
+			ConfigFiles: []SoftwareManagementConfigFile{
+				{
+					ConfigTemplate: "/source",
+					ConfigLocation: "/destination",
+				},
+			},
+			Parameters: []SoftwareManagementParameter{
+				{
+					Key:   "some-key",
+					Value: "the-value",
+				},
+			},
+		},
+	}
 
-	tagName := "test"
+	t.Run("test configuration lifecycle", func(t *testing.T) {
+		//
+		// If we create a change, we should see it as being uncommitted
+		//
+		_, err := client.FileDistribution.Create(ConfigForTag, tagName, testFiles, false)
+		require.Nil(t, err)
 
-	t.Run("it can read a tag", func(t *testing.T) {
-		resp, err := changeService.GetConfiguration(ConfigForTag, tagName)
-		assert.Nil(t, err)
+		pendingChanges, err := client.Configuration.GetUncommitted()
+		require.Nil(t, err)
 
-		assert.NotNil(t, resp)
+		assert.Len(t, pendingChanges, 1)
+
+		//
+		// Clear all uncommitted changes, and verify the list is empty
+		//
+		err = client.Configuration.ClearUncommitted()
+		require.Nil(t, err)
+
+		pendingChanges, err = client.Configuration.GetUncommitted()
+		require.Nil(t, err)
+		require.Empty(t, pendingChanges)
+
+		//
+		// Add and commit FileDistribution and verify we see no uncommitted changes, and the FileDistribution as config
+		//
+		_, err = client.FileDistribution.Create(ConfigForTag, tagName, testFiles, false)
+		require.Nil(t, err)
+
+		_, err = client.Configuration.Commit("Terraform provider - add filedistribution for integration test")
+		require.Nil(t, err)
+
+		pendingChanges, err = client.Configuration.GetUncommitted()
+		require.Nil(t, err)
+		assert.Empty(t, pendingChanges)
+
+		resp, err := client.Configuration.GetConfiguration(ConfigForTag, tagName)
+		require.Nil(t, err)
+		require.NotNil(t, resp.Config.BundleData.FileDistribution)
+
+		//
+		// Add SoftwareManagement on the tag and verify we see both
+		//
+		_, err = client.SoftwareManagement.Create(ConfigForTag, tagName, testSoftwareItems, false)
+		require.Nil(t, err)
+
+		_, err = client.Configuration.Commit("Terraform provider - add filedistribution for integration test")
+		require.Nil(t, err)
+
+		resp, err = client.Configuration.GetConfiguration(ConfigForTag, tagName)
+		require.Nil(t, err)
+
+		require.NotNil(t, t, resp.Config.BundleData)
+		var bd = resp.Config.BundleData
+		require.NotNil(t, bd.FileDistribution)
+		require.NotNil(t, bd.SoftwareManagement)
+
+		var actualFiles = bd.FileDistribution.Files
+		require.Len(t, actualFiles, 1)
+		require.Len(t, actualFiles[0].Templates, 1)
+		assert.Equal(t, actualFiles[0].Templates[0].Source, "/some/source")
+		assert.Equal(t, actualFiles[0].Templates[0].Destination, "/other/dest")
+		assert.Equal(t, actualFiles[0].Templates[0].IsTemplate, true)
+		require.Len(t, actualFiles[0].Parameters, 1)
+		assert.Equal(t, actualFiles[0].Parameters[0].Key, "key")
+		assert.Equal(t, actualFiles[0].Parameters[0].Value, "value")
+
+		var actualItems = bd.SoftwareManagement.Items
+		require.Len(t, actualItems, 1)
+		assert.Equal(t, actualItems[0].Package, "TestPackage")
+		assert.Equal(t, actualItems[0].ServiceName, "TestName")
+		assert.Equal(t, actualItems[0].PreCondition, "/bin/true")
+		require.Len(t, actualItems[0].ConfigFiles, 1)
+		assert.Equal(t, actualItems[0].ConfigFiles[0].ConfigTemplate, "/source")
+		assert.Equal(t, actualItems[0].ConfigFiles[0].ConfigLocation, "/destination")
+		require.Len(t, actualItems[0].Parameters, 1)
+		assert.Equal(t, actualItems[0].Parameters[0].Key, "some-key")
+		assert.Equal(t, actualItems[0].Parameters[0].Value, "the-value")
+
+		// Clear FileDistribution from the tag
+		_, err = client.FileDistribution.Clear(ConfigForTag, tagName)
+		require.Nil(t, err)
+
+		_, err = client.Configuration.Commit("Terraform provider - cleared filedistribution from tag")
+		require.Nil(t, err)
+
+		resp, err = client.Configuration.GetConfiguration(ConfigForTag, tagName)
+		require.Nil(t, err)
+
+		bd = resp.Config.BundleData
+		require.Nil(t, bd.FileDistribution)
+		require.NotNil(t, bd.SoftwareManagement)
+
+		// Clear SoftwareManagement from the tag
+		_, err = client.SoftwareManagement.Clear(ConfigForTag, tagName)
+		require.Nil(t, err)
+
+		_, err = client.Configuration.Commit("Terraform provider - cleared filedistribution from tag")
+		require.Nil(t, err)
+
+		resp, err = client.Configuration.GetConfiguration(ConfigForTag, tagName)
+		require.Nil(t, err)
+
+		bd = resp.Config.BundleData
+		assert.Nil(t, bd.FileDistribution)
+		assert.Nil(t, bd.SoftwareManagement)
 	})
 
-	//
-	//t.Run("it should be able to create and delete configuration for a tag", func(t *testing.T) {
-	//	// Change
-	//	// Commit
-	//	// Verify
-	//	// Clear
-	//	// Commit
-	//	//response, err := changeService.ChangeTagFiledistribution()
-	//})
-	//
-	//t.Run("it should be able to delete uncommitted changes", func(t *testing.T) {
-	//	// Change
-	//	// Clear uncommitted
-	//	// Verify
-	//})
+	t.Cleanup(func() {
+		err = client.Configuration.ClearUncommitted()
+		require.Nil(t, err)
+
+		_, err = client.FileDistribution.Clear(ConfigForTag, tagName)
+		require.Nil(t, err)
+
+		_, err = client.SoftwareManagement.Clear(ConfigForTag, tagName)
+		require.Nil(t, err)
+
+		changes, err := client.Configuration.GetUncommitted()
+		require.Nil(t, err)
+
+		if len(changes) > 0 {
+			_, err = client.Configuration.Commit("Terraform provider - Clean up after configuration integration test")
+			require.Nil(t, err)
+		}
+	})
 }

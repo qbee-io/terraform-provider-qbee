@@ -2,30 +2,22 @@ resource "qbee_softwaremanagement" "example" {
   node = "root"
   # or 'tag = "tagname"'
   extend = true
-  files = [
+
+  items = [
     {
-      pre_condition = "/bin/true"
-      command = "date -u > /tmp/last-updated.txt"
-      templates = [
+      package = "mysql",
+      service_name = "service",
+      pre_condition = "/a/b/c/",
+      config_files = [
         {
-          source = "/example/file.txt.template"
-          destination = "/target/path.txt"
-          is_template = true
-        },
-        {
-          source = "/example/file2.json"
-          destination = "/target/path2.json"
-          is_template = false
+          template = "/testtemplate"
+          location = "/testlocation"
         }
       ]
       parameters = [
         {
-          key = "param-key-1"
-          value = "param-value-1"
-        },
-        {
-          key = "param-key-2"
-          value = "param-value-2"
+          key = "param1"
+          value = "value1"
         }
       ]
     }

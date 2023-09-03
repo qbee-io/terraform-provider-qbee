@@ -5,12 +5,15 @@ import (
 	"context"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"strings"
 )
@@ -135,11 +138,15 @@ func (r *filedistributionResource) ConfigValidators(ctx context.Context) []resou
 }
 
 type filedistributionResourceModel struct {
-	ID     types.String `tfsdk:"id"`
-	Tag    types.String `tfsdk:"tag"`
 	Node   types.String `tfsdk:"node"`
+	Tag    types.String `tfsdk:"tag"`
+	ID     types.String `tfsdk:"id"`
 	Extend types.Bool   `tfsdk:"extend"`
 	Files  types.List   `tfsdk:"files"`
+}
+
+func (m filedistributionResourceModel) typeAndIdentifier() (qbee.ConfigType, string) {
+	return typeAndIdentifier(m.Tag, m.Node)
 }
 
 // Create creates the resource and sets the initial Terraform state.
@@ -206,10 +213,10 @@ func (r *filedistributionResource) Read(ctx context.Context, req resource.ReadRe
 		return
 	}
 
-	configType, identifier := typeAndIdentifier(state)
+	configType, identifier := state.typeAndIdentifier()
 
 	// Read the real status
-	currentFiledistribution, err := r.client.Config.GetFiledistribution(configType, identifier)
+	currentFiledistribution, err := r.client.FileDistribution.Get(configType, identifier)
 	if err != nil {
 		resp.Diagnostics.AddError("Could not read filedistribution",
 			"error reading the filedistribution resource: "+err.Error())
@@ -225,7 +232,7 @@ func (r *filedistributionResource) Read(ctx context.Context, req resource.ReadRe
 
 	state.ID = types.StringValue("placeholder")
 	state.Extend = types.BoolValue(currentFiledistribution.Extend)
-	state.Files = fileValues
+	state.Files = *fileValues
 
 	resp.State.Set(ctx, state)
 }
@@ -241,10 +248,10 @@ func (r *filedistributionResource) Delete(ctx context.Context, req resource.Dele
 	}
 
 	// Delete the resource
-	configType, identifier := typeAndIdentifier(state)
+	configType, identifier := state.typeAndIdentifier()
 	tflog.Info(ctx, fmt.Sprintf("Deleting filedistribution for %v %v", configType.String(), identifier))
 
-	deleteResponse, err := r.client.Config.ClearFileDistribution(configType, identifier)
+	deleteResponse, err := r.client.FileDistribution.Clear(configType, identifier)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting filedistribution",
@@ -292,7 +299,7 @@ func (r *filedistributionResource) ImportState(ctx context.Context, req resource
 }
 
 func (r *filedistributionResource) writeFiledistribution(ctx context.Context, plan filedistributionResourceModel) error {
-	configType, identifier := typeAndIdentifier(plan)
+	configType, identifier := plan.typeAndIdentifier()
 	extend := plan.Extend.ValueBool()
 
 	var files []filedistributionFile
@@ -306,7 +313,7 @@ func (r *filedistributionResource) writeFiledistribution(ctx context.Context, pl
 
 	// Create the resource
 	tflog.Info(ctx, fmt.Sprintf("Creating file distribution for %v %v with %v filesets", configType.String(), identifier, len(filesets)))
-	createResponse, err := r.client.Config.CreateFileDistribution(configType, identifier, filesets, extend)
+	createResponse, err := r.client.FileDistribution.Create(configType, identifier, filesets, extend)
 	if err != nil {
 		return fmt.Errorf("error creating a filedistribution resource: %w", err)
 	}
@@ -326,15 +333,142 @@ func (r *filedistributionResource) writeFiledistribution(ctx context.Context, pl
 	return nil
 }
 
-func typeAndIdentifier(plan filedistributionResourceModel) (qbee.ConfigType, string) {
-	var configType qbee.ConfigType
-	var identifier string
-	if plan.Tag.IsNull() {
-		configType = qbee.ConfigForNode
-		identifier = plan.Node.ValueString()
-	} else {
-		configType = qbee.ConfigForTag
-		identifier = plan.Tag.ValueString()
+func planToQbeeFilesets(ctx context.Context, files []filedistributionFile) []qbee.FiledistributionFile {
+	var filesets []qbee.FiledistributionFile
+
+	for _, file := range files {
+		var paramValues []filedistributionParameter
+		file.Parameters.ElementsAs(ctx, &paramValues, false)
+		var params []qbee.FiledistributionParameter
+		for _, value := range paramValues {
+			params = append(params, qbee.FiledistributionParameter{
+				Key:   value.Key.ValueString(),
+				Value: value.Value.ValueString(),
+			})
+		}
+
+		var templateValues []filedistributionTemplate
+		file.Templates.ElementsAs(ctx, &templateValues, false)
+		var templates []qbee.FiledistributionTemplate
+		for _, value := range templateValues {
+			templates = append(templates, qbee.FiledistributionTemplate{
+				Source:      value.Source.ValueString(),
+				Destination: value.Destination.ValueString(),
+				IsTemplate:  value.IsTemplate.ValueBool(),
+			})
+		}
+
+		filesets = append(filesets, qbee.FiledistributionFile{
+			PreCondition: file.PreCondition.ValueString(),
+			Command:      file.Command.ValueString(),
+			Templates:    templates,
+			Parameters:   params,
+		})
 	}
-	return configType, identifier
+
+	return filesets
+}
+
+func filedistributionToListValue(ctx context.Context, filedistribution *qbee.FileDistribution, resp *resource.ReadResponse) *basetypes.ListValue {
+	var files []filedistributionFile
+
+	for _, file := range filedistribution.Files {
+		value, diags := fromQbeeFile(ctx, file)
+		if diags.HasError() {
+			resp.Diagnostics.Append(diags...)
+			return nil
+		}
+
+		files = append(files, *value)
+	}
+
+	fileValues, diags := types.ListValueFrom(ctx, types.ObjectType{
+		AttrTypes: filedistributionFile{}.attrTypes(),
+	}, files)
+	resp.Diagnostics.Append(diags...)
+	return &fileValues
+}
+
+func fromQbeeFile(ctx context.Context, item qbee.FiledistributionFile) (*filedistributionFile, diag.Diagnostics) {
+	var templates []filedistributionTemplate
+	for _, template := range item.Templates {
+		templates = append(templates, filedistributionTemplate{
+			Source:      nullableStringValue(template.Source),
+			Destination: nullableStringValue(template.Destination),
+			IsTemplate:  types.BoolValue(template.IsTemplate),
+		})
+	}
+	templatesValue, diags := listFromStructs(ctx, templates, basetypes.ObjectType{AttrTypes: filedistributionTemplate{}.attrTypes()})
+	if diags.HasError() {
+		return nil, diags
+	}
+
+	var parameters []filedistributionParameter
+	for _, parameter := range item.Parameters {
+		parameters = append(parameters, filedistributionParameter{
+			Key:   nullableStringValue(parameter.Key),
+			Value: nullableStringValue(parameter.Value),
+		})
+	}
+	parametersValue, diags := listFromStructs(ctx, parameters, basetypes.ObjectType{AttrTypes: filedistributionParameter{}.attrTypes()})
+	if diags.HasError() {
+		return nil, diags
+	}
+
+	return &filedistributionFile{
+		Command:      nullableStringValue(item.Command),
+		PreCondition: nullableStringValue(item.PreCondition),
+		Templates:    templatesValue,
+		Parameters:   parametersValue,
+	}, nil
+}
+
+type filedistributionTemplate struct {
+	Source      types.String `tfsdk:"source"`
+	Destination types.String `tfsdk:"destination"`
+	IsTemplate  types.Bool   `tfsdk:"is_template"`
+}
+
+func (f filedistributionTemplate) attrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"source":      types.StringType,
+		"destination": types.StringType,
+		"is_template": types.BoolType,
+	}
+}
+
+type filedistributionFile struct {
+	Command      types.String `tfsdk:"command"`
+	PreCondition types.String `tfsdk:"pre_condition"`
+	Templates    types.List   `tfsdk:"templates"`
+	Parameters   types.List   `tfsdk:"parameters"`
+}
+
+func (f filedistributionFile) attrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"command":       types.StringType,
+		"pre_condition": types.StringType,
+		"templates": types.ListType{
+			ElemType: types.ObjectType{
+				AttrTypes: filedistributionTemplate{}.attrTypes(),
+			},
+		},
+		"parameters": types.ListType{
+			ElemType: types.ObjectType{
+				AttrTypes: filedistributionParameter{}.attrTypes(),
+			},
+		},
+	}
+}
+
+type filedistributionParameter struct {
+	Key   types.String `tfsdk:"key"`
+	Value types.String `tfsdk:"value"`
+}
+
+func (f filedistributionParameter) attrTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"key":   types.StringType,
+		"value": types.StringType,
+	}
 }

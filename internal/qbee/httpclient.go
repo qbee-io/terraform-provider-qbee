@@ -25,11 +25,12 @@ type HttpClient struct {
 
 	baseURL *url.URL
 
-	Inventory     *InventoryService
-	Files         *FilesService
-	Grouptree     *GrouptreeService
-	Config        *ConfigService
-	Configuration *ConfigurationService
+	Inventory          *InventoryService
+	Files              *FilesService
+	Grouptree          *GrouptreeService
+	Configuration      *ConfigurationService
+	FileDistribution   *FileDistributionService
+	SoftwareManagement *SoftwaremanagementService
 }
 
 type QbeeApiErrorResponse struct {
@@ -101,7 +102,8 @@ func NewClient(username string, password string, options ...ClientOptionFunc) (*
 	c.Files = &FilesService{Client: c}
 	c.Grouptree = &GrouptreeService{Client: c}
 	c.Configuration = &ConfigurationService{Client: c}
-	c.Config = &ConfigService{Client: c}
+	c.FileDistribution = &FileDistributionService{Client: c}
+	c.SoftwareManagement = &SoftwaremanagementService{Client: c}
 
 	return c, nil
 }
