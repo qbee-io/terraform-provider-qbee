@@ -133,7 +133,7 @@ func (c *HttpClient) Post(path string, body interface{}) (*http.Response, error)
 
 	response, err := c.requestWithBody(body, http.MethodPost, u)
 	if err != nil {
-		return nil, fmt.Errorf("HttpClient.Put(%v): ", err)
+		return nil, fmt.Errorf("HttpClient.Put(%v, %+v): %w", path, body, err)
 	}
 
 	return response, nil
@@ -144,7 +144,18 @@ func (c *HttpClient) Put(path string, body interface{}) (*http.Response, error) 
 
 	response, err := c.requestWithBody(body, http.MethodPut, u)
 	if err != nil {
-		return nil, fmt.Errorf("HttpClient.Put(%v): ", err)
+		return nil, fmt.Errorf("HttpClient.Put(%v, %+v): %w", path, body, err)
+	}
+
+	return response, nil
+}
+
+func (c *HttpClient) Patch(path string, body interface{}) (*http.Response, error) {
+	u := c.buildURL(path)
+
+	response, err := c.requestWithBody(body, http.MethodPatch, u)
+	if err != nil {
+		return nil, fmt.Errorf("HttpClient.Patch(%v, %+v): %w", path, body, err)
 	}
 
 	return response, nil

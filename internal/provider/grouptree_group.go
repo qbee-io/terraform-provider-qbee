@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"reflect"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -59,6 +60,11 @@ func (r *grouptreeGroupResource) Schema(_ context.Context, _ resource.SchemaRequ
 				Description:   "node_id of the direct ancestor of the group",
 				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
 			},
+			"tags": schema.ListAttribute{
+				ElementType: types.StringType,
+				Optional:    true,
+				Description: "A list of tags to add to the group",
+			},
 		},
 	}
 }
@@ -67,6 +73,7 @@ type grouptreeGroupResourceModel struct {
 	ID       types.String `tfsdk:"id"`
 	Title    types.String `tfsdk:"title"`
 	Ancestor types.String `tfsdk:"ancestor"`
+	Tags     types.List   `tfsdk:"tags"`
 }
 
 // Create creates the resource and sets the initial Terraform state.
@@ -89,6 +96,23 @@ func (r *grouptreeGroupResource) Create(ctx context.Context, req resource.Create
 	if err != nil {
 		fmt.Printf("error: %v", err)
 		resp.Diagnostics.AddError("Error creating Grouptree resource", "could not create grouptree resource: "+err.Error())
+		return
+	}
+
+	var tags []string
+	if !plan.Tags.IsNull() {
+		tags = make([]string, len(plan.Tags.Elements()))
+		diags = plan.Tags.ElementsAs(ctx, &tags, false)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
+	err = r.client.Grouptree.SetTags(id, tags)
+	if err != nil {
+		fmt.Printf("error while settings tags to %+v: %v", tags, err)
+		resp.Diagnostics.AddError("Error creating Grouptree source", "could not set tags on resource: "+err.Error())
 		return
 	}
 
@@ -123,6 +147,12 @@ func (r *grouptreeGroupResource) Read(ctx context.Context, req resource.ReadRequ
 	}
 
 	state.Title = types.StringValue(readResponse.Title)
+
+	state.Tags, diags = types.ListValueFrom(ctx, types.StringType, readResponse.Tags)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	ancestors := readResponse.Ancestors
 	lastAncestor := ancestors[len(ancestors)-2]
@@ -170,6 +200,28 @@ func (r *grouptreeGroupResource) Update(ctx context.Context, req resource.Update
 		if err != nil {
 			tflog.Error(ctx, fmt.Sprintf("Error response while renaming grouptree_group: %v", err))
 			resp.Diagnostics.AddError("Could not rename group", "Error while renaming grouptree_group resource: "+err.Error())
+			return
+		}
+	}
+
+	// Check if we should update the tags
+	oldTags := state.Tags
+	newTags := plan.Tags
+	if !reflect.DeepEqual(oldTags, newTags) {
+		var tags []string
+		if !plan.Tags.IsNull() {
+			tags = make([]string, len(plan.Tags.Elements()))
+			diags = plan.Tags.ElementsAs(ctx, &tags, false)
+			resp.Diagnostics.Append(diags...)
+			if resp.Diagnostics.HasError() {
+				return
+			}
+		}
+
+		err := r.client.Grouptree.SetTags(id, tags)
+		if err != nil {
+			fmt.Printf("error while settings tags to %+v: %v", tags, err)
+			resp.Diagnostics.AddError("Error creating Grouptree source", "could not set tags on resource: "+err.Error())
 			return
 		}
 	}

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add support for the 'tags' property for qbee_grouptree_group
+
 ## [0.3.0] - 2023-09-03
 
 ### Added

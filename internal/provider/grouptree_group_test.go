@@ -70,6 +70,41 @@ resource "qbee_grouptree_group" "test" {
 					resource.TestCheckResourceAttr("qbee_grouptree_group.test", "title", "Testing Terraform"),
 				),
 			},
+			// Add tags test
+			{
+				Config: providerConfig + `
+resource "qbee_grouptree_group" "test" {
+	id = "group-under-tf-test"
+	ancestor = "integrationtests"
+	title = "Testing Terraform"
+	tags = ["integration-test:tag-1", "integration-test:tag-2"]
+}
+			`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("qbee_grouptree_group.test", "id", "group-under-tf-test"),
+					resource.TestCheckResourceAttr("qbee_grouptree_group.test", "ancestor", "integrationtests"),
+					resource.TestCheckResourceAttr("qbee_grouptree_group.test", "title", "Testing Terraform"),
+					resource.TestCheckResourceAttr("qbee_grouptree_group.test", "tags.#", "2"),
+					resource.TestCheckResourceAttr("qbee_grouptree_group.test", "tags.0", "integration-test:tag-1"),
+					resource.TestCheckResourceAttr("qbee_grouptree_group.test", "tags.1", "integration-test:tag-2"),
+				),
+			},
+			// Remove tags test
+			{
+				Config: providerConfig + `
+resource "qbee_grouptree_group" "test" {
+	id = "group-under-tf-test"
+	ancestor = "integrationtests"
+	title = "Testing Terraform"
+}
+			`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("qbee_grouptree_group.test", "id", "group-under-tf-test"),
+					resource.TestCheckResourceAttr("qbee_grouptree_group.test", "ancestor", "integrationtests"),
+					resource.TestCheckResourceAttr("qbee_grouptree_group.test", "title", "Testing Terraform"),
+					resource.TestCheckNoResourceAttr("qbee_grouptree_group.test", "tags"),
+				),
+			},
 			// Import testing
 			{
 				ResourceName:      "qbee_grouptree_group.test",
