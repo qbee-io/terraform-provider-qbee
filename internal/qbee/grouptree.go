@@ -16,6 +16,7 @@ type GetGrouptreeResponse struct {
 	NodeId    string   `json:"node_id"`
 	Type      string   `json:"type"`
 	Ancestors []string `json:"ancestors"`
+	Tags      []string `json:"tags"`
 }
 
 func (s GrouptreeService) Get(id string) (*GetGrouptreeResponse, error) {
@@ -50,7 +51,7 @@ type grouptreeChanges struct {
 
 type grouptreeModificationData struct {
 	ParentId    string `json:"parent_id"`
-	OldParentId string `json:"oldParentId"`
+	OldParentId string `json:"old_parent_id"`
 	Title       string `json:"title"`
 	NodeId      string `json:"node_id"`
 	Position    int    `json:"position"`
@@ -131,12 +132,18 @@ func (s GrouptreeService) Move(id string, oldAncestor string, newAncestor string
 	return nil
 }
 
+func (s GrouptreeService) SetTags(id string, tags []string) error {
+	_, err := s.Client.Patch("/grouptree/"+id, struct {
+		Tags []string `json:"tags"`
+	}{
+		Tags: tags,
+	})
+
+	return err
+}
+
 func (s GrouptreeService) putGrouptreeModification(changes []grouptreeChanges) error {
 	options := grouptreeModificationOptions{Changes: changes}
 	_, err := s.Client.Put("/grouptree", options)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
