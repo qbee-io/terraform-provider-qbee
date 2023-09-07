@@ -24,9 +24,15 @@ terraform project where you want to use it:
 
 ```shell
 # From the root of your terraform project (where your *.tf files are stored):
-mkdir -p ./terraform.d/plugins/terraform.local/qbee/qbee/
-cp <dist>.zip ./terraform.d/plugins/terraform.local/qbee/qbee/
+GOOS=$(go env GOOS)
+GOARCH=$(go env GOARCH)
+TARGET_DIR=".terraform/plugins/terraform.booqsoftware.com/qbee/qbee/$VERSION/${GOOS}_${GOARCH}"
+
+mkdir -p "$TARGET_DIR"
+cp <dist> "$TARGET_DIR"
 ```
+
+After that, initialize the terraform project with `terraform init -plugin-dir=.terraform/plugins`
 
 ## Building The Provider
 

@@ -30,13 +30,17 @@ pipeline {
     stages {
         stage('Compile') {
             steps {
-                sh 'go build'
+                container('golang') {
+                    sh 'go build'
+                }
             }
         }
 
         stage('Test') {
             steps {
-                sh 'go test ./...'
+                container('golang') {
+                    sh 'go test ./...'
+                }
             }
         }
 
@@ -46,7 +50,9 @@ pipeline {
             }
 
             steps {
-                sh 'curl -sfL https://goreleaser.com/static/run | bash'
+                container('golang') {
+                    sh 'curl -sfL https://goreleaser.com/static/run | bash -s -- release --skip-sign --clean'
+                }
             }
         }
     }
