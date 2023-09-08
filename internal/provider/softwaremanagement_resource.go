@@ -246,7 +246,7 @@ func (r *softwaremanagementResource) Read(ctx context.Context, req resource.Read
 	tflog.Info(ctx, fmt.Sprintf("reading softwaremanagement with identifier %v", state.identifierToString()))
 
 	// Update the current state
-	diags = r.readSoftwareManagement(ctx, &state)
+	diags = r.readSoftwareManagement(ctx, &state, resp)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -433,7 +433,7 @@ func (p softwareManagementItemParameter) toQbeeItem() qbee.SoftwareManagementPar
 	}
 }
 
-func (r *softwaremanagementResource) readSoftwareManagement(ctx context.Context, state *softwareManagementResourceModel) diag.Diagnostics {
+func (r *softwaremanagementResource) readSoftwareManagement(ctx context.Context, state *softwareManagementResourceModel, resp *resource.ReadResponse) diag.Diagnostics {
 	configType, identifier := state.typeAndIdentifier()
 
 	// Read the real status
@@ -442,6 +442,11 @@ func (r *softwaremanagementResource) readSoftwareManagement(ctx context.Context,
 		return diag.Diagnostics{
 			diag.NewErrorDiagnostic("error reading softwaremanagement state", err.Error()),
 		}
+	}
+
+	if currentState == nil {
+		resp.State.RemoveResource(ctx)
+		return nil
 	}
 
 	state.Extend = types.BoolValue(currentState.Extend)

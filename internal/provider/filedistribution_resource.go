@@ -224,6 +224,11 @@ func (r *filedistributionResource) Read(ctx context.Context, req resource.ReadRe
 		return
 	}
 
+	if currentFiledistribution == nil {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
 	// Update the current state
 	fileValues := filedistributionToListValue(ctx, currentFiledistribution, resp)
 	if resp.Diagnostics.HasError() {

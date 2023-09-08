@@ -1,6 +1,6 @@
 {
   "config": {
-    "id": "some:test-tag",
+    "id": "tagname",
     "type": "tag",
     "commit_id": "abcdefghijklmnopqrstuvwxyz",
     "commit_created": 1688388581822251355,
@@ -34,16 +34,6 @@
               }
             ],
             "command": "echo \"done!\""
-          },
-          {
-            "templates": [
-              {
-                "source": "sources/file2",
-                "destination": "/destinations/file2",
-                "is_template": false
-              }
-            ],
-            "pre_condition": "/bin/true"
           }
         ]
       },

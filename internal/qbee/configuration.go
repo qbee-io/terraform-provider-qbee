@@ -1,6 +1,7 @@
 package qbee
 
 import (
+	"encoding/json"
 	"fmt"
 )
 
@@ -147,19 +148,45 @@ type Change struct {
 	} `json:"content"`
 }
 
+type GetConfigurationConfig struct {
+	Id            string                  `json:"id"`
+	Type          string                  `json:"type"`
+	CommitId      string                  `json:"commit_id"`
+	CommitCreated int64                   `json:"commit_created"`
+	Bundles       []string                `json:"bundles"`
+	BundleData    ConfigurationBundleData `json:"bundle_data"`
+}
+
 type GetConfigurationResponse struct {
-	Config struct {
-		Id            string   `json:"id"`
-		Type          string   `json:"type"`
-		CommitId      string   `json:"commit_id"`
-		CommitCreated int64    `json:"commit_created"`
-		Bundles       []string `json:"bundles"`
-		BundleData    struct {
+	Config GetConfigurationConfig `json:"config"`
+	Status string                 `json:"status"`
+}
+
+type ConfigurationBundleData struct {
+	FileDistribution   *FileDistribution   `json:"file_distribution"`
+	SoftwareManagement *SoftwareManagement `json:"software_management"`
+}
+
+func (c *ConfigurationBundleData) UnmarshalJSON(data []byte) error {
+	// Because of a qbee bug, if a Configuration has no bundles, it will return as an
+	// empty array instead of the expected empty map. This means we need to handle this specifically
+	if data[0] == '{' {
+		// It looks like an object; We can actually try unmarshalling it into the
+		// ConfigurationBundleData.
+		var v struct {
 			FileDistribution   *FileDistribution   `json:"file_distribution"`
 			SoftwareManagement *SoftwareManagement `json:"software_management"`
-		} `json:"bundle_data"`
-	} `json:"config"`
-	Status string `json:"status"`
+		}
+		err := json.Unmarshal(data, &v)
+		if err != nil {
+			return err
+		}
+
+		c.FileDistribution = v.FileDistribution
+		c.SoftwareManagement = v.SoftwareManagement
+	}
+
+	return nil
 }
 
 type FileDistribution struct {
