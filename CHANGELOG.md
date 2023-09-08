@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2023-09-08
+
 ### Fixed
 
 - Support handling of empty configuration responses (no bundle data) from qbee
