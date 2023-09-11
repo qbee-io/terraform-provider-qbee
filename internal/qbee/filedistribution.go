@@ -14,7 +14,7 @@ func (s FileDistributionService) Create(ct ConfigType, id string, filesets []Fil
 		Extend:   extend,
 		Config: ChangePayloadConfig{
 			Version: "v1",
-			Enabled: false,
+			Enabled: true,
 			Files:   filesets,
 		},
 	}

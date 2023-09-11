@@ -14,7 +14,7 @@ func (s SoftwaremanagementService) Create(ct ConfigType, id string, items []Soft
 		Extend:   extend,
 		Config: ChangePayloadConfig{
 			Version: "v1",
-			Enabled: false,
+			Enabled: true,
 			Items:   items,
 		},
 	}
