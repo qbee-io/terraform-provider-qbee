@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- file_sha256 property of qbee_filedistribution_file is now computed and read-only
+
 ## [0.4.1] - 2023-09-08
 
 ### Fixed
