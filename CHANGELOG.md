@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Revert the file_sha256 property removal. It is required to trigger updates when the local contents change.
+ 
 ## [0.5.1] - 2023-09-11
 
 ### Fixed

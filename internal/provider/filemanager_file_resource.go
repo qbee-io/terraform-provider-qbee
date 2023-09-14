@@ -3,8 +3,6 @@ package provider
 import (
 	"bitbucket.org/booqsoftware/terraform-provider-qbee/internal/qbee"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -14,8 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"io"
-	"os"
 	"path/filepath"
 )
 
@@ -67,7 +63,10 @@ func (r *filemanagerFileResource) Schema(_ context.Context, _ resource.SchemaReq
 				Description:   "The source file to upload.",
 			},
 			"file_sha256": schema.StringAttribute{
-				Computed: true,
+				Required:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+				Description: "The filebase64sha256 of the source file. Required to ensure resource " +
+					"updates if the file changes.",
 			},
 		},
 	}
@@ -96,17 +95,8 @@ func (r *filemanagerFileResource) Create(ctx context.Context, req resource.Creat
 	fileDirectory := filepath.Dir(pathCleaned)
 	fileName := filepath.Base(pathCleaned)
 	sourceFile := plan.SourceFile.ValueString()
-
-	fileHash, err := fileSha256(sourceFile)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error creating filemanager_file",
-			"could not determine file hash: "+err.Error())
-		return
-	}
-
 	tflog.Info(ctx, fmt.Sprintf("Uploading file %v to %v/%v", sourceFile, fileDirectory, fileName))
-	_, err = r.client.Files.Upload(sourceFile, fileDirectory, fileName)
+	_, err := r.client.Files.Upload(sourceFile, fileDirectory, fileName)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating filemanager_file",
@@ -116,7 +106,6 @@ func (r *filemanagerFileResource) Create(ctx context.Context, req resource.Creat
 
 	// Map response body to schema and populate Computed attribute values
 	plan.ID = types.StringValue("placeholder")
-	plan.FileSha256 = types.StringValue(fileHash)
 
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
@@ -194,19 +183,4 @@ func (r *filemanagerFileResource) Delete(ctx context.Context, req resource.Delet
 
 func (r *filemanagerFileResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("path"), req, resp)
-}
-
-func fileSha256(path string) (string, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-
-	hasher := sha256.New()
-	if _, err := io.Copy(hasher, f); err != nil {
-		return "", err
-	}
-
-	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
