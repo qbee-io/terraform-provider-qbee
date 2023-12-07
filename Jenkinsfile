@@ -31,7 +31,7 @@ pipeline {
         stage('Compile') {
             steps {
                 container('golang') {
-                    sh 'go build'
+                    sh 'go build --buildvcs=false'
                 }
             }
         }
