@@ -28,10 +28,18 @@ pipeline {
     }
 
     stages {
+        stage('Prepare') {
+            steps {
+                container('golang') {
+                    sh "git config --global --add safe.directory '*'"
+                }
+            }
+        }
+
         stage('Compile') {
             steps {
                 container('golang') {
-                    sh 'go build --buildvcs=false'
+                    sh 'go build'
                 }
             }
         }
