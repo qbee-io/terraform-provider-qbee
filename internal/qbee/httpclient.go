@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/google/go-querystring/query"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -242,8 +241,6 @@ func (c *HttpClient) AuthenticatedRequest(req *http.Request) (*http.Response, er
 		return nil, fmt.Errorf("could not retrieve Qbee auth token: %w", err)
 	}
 
-	fmt.Printf("req %v %v body %v", req.Method, req.URL, req.Body)
-
 	req.Header.Add("Authorization", "Bearer "+auth)
 
 	client := http.Client{}
@@ -326,16 +323,12 @@ func (c *HttpClient) BaseURL() *url.URL {
 func (c *HttpClient) ParseJsonBody(r *http.Response, response any) error {
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
-		log.Printf("error while reading body from response: %v", r)
-		return err
+		return fmt.Errorf("error while reading body from response: '%v' %w", r, err)
 	}
-
-	log.Printf("response body: %v", string(b))
 
 	err = json.Unmarshal(b, &response)
 	if err != nil {
-		log.Printf("could not parse json: '%v'", string(b))
-		return err
+		return fmt.Errorf("could not parse json: '%v' %w", string(b), err)
 	}
 
 	return nil
