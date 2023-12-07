@@ -163,7 +163,7 @@ func (r *firewallResource) Create(ctx context.Context, req resource.CreateReques
 	diags = r.writeFirewall(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
-		resp.Diagnostics.Append(diags...)
+		return
 	}
 
 	// Map response body to schema and populate Computed attribute values
@@ -190,7 +190,7 @@ func (r *firewallResource) Update(ctx context.Context, req resource.UpdateReques
 	diags = r.writeFirewall(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
-		resp.Diagnostics.Append(diags...)
+		return
 	}
 
 	// Map response body to schema and populate Computed attribute values
