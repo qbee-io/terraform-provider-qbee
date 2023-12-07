@@ -374,10 +374,10 @@ func planToQbeeFilesets(ctx context.Context, files []filedistributionFile) []qbe
 	return filesets
 }
 
-func filedistributionToListValue(ctx context.Context, filedistribution *qbee.FileDistribution, resp *resource.ReadResponse) *basetypes.ListValue {
+func filedistributionToListValue(ctx context.Context, filedistribution *qbee.BundleConfiguration, resp *resource.ReadResponse) *basetypes.ListValue {
 	var files []filedistributionFile
 
-	for _, file := range filedistribution.Files {
+	for _, file := range filedistribution.FiledistributionFiles {
 		value, diags := fromQbeeFile(ctx, file)
 		if diags.HasError() {
 			resp.Diagnostics.Append(diags...)

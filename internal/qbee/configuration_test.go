@@ -41,12 +41,12 @@ func TestGetConfigurationFiledistributionAndSoftware(t *testing.T) {
 			CommitCreated: 1688388581822251355,
 			Bundles:       []string{"file_distribution", "software_management"},
 			BundleData: ConfigurationBundleData{
-				FileDistribution: &FileDistribution{
+				FileDistribution: &BundleConfiguration{
 					Enabled:        true,
 					Extend:         true,
 					Version:        "v1",
 					BundleCommitId: "filedist_bundlecommitid",
-					Files: []FiledistributionFile{
+					FiledistributionFiles: []FiledistributionFile{
 						{
 							Command: "echo \"done!\"",
 							Templates: []FiledistributionTemplate{
@@ -69,12 +69,12 @@ func TestGetConfigurationFiledistributionAndSoftware(t *testing.T) {
 						},
 					},
 				},
-				SoftwareManagement: &SoftwareManagement{
+				SoftwareManagement: &BundleConfiguration{
 					Enabled:        true,
 					Extend:         true,
 					Version:        "v1",
 					BundleCommitId: "softwareman_bundlecommitid",
-					Items: []SoftwareManagementItem{
+					SoftwareItems: []SoftwareManagementItem{
 						{
 							Package:     "/some/package.deb",
 							ServiceName: "somepackage",

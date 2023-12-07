@@ -55,7 +55,7 @@ func (s FileDistributionService) Clear(ct ConfigType, id string) (*Change, error
 	return r, nil
 }
 
-func (s FileDistributionService) Get(ct ConfigType, id string) (*FileDistribution, error) {
+func (s FileDistributionService) Get(ct ConfigType, id string) (*BundleConfiguration, error) {
 	resp, err := s.Client.Configuration.GetConfiguration(ct, id)
 	if err != nil {
 		return nil, err

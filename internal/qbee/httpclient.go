@@ -31,6 +31,7 @@ type HttpClient struct {
 	Configuration      *ConfigurationService
 	FileDistribution   *FileDistributionService
 	SoftwareManagement *SoftwaremanagementService
+	Firewall           *FirewallService
 }
 
 type QbeeApiErrorResponse struct {
@@ -104,6 +105,7 @@ func NewClient(username string, password string, options ...ClientOptionFunc) (*
 	c.Configuration = &ConfigurationService{Client: c}
 	c.FileDistribution = &FileDistributionService{Client: c}
 	c.SoftwareManagement = &SoftwaremanagementService{Client: c}
+	c.Firewall = &FirewallService{Client: c}
 
 	return c, nil
 }
@@ -240,6 +242,8 @@ func (c *HttpClient) AuthenticatedRequest(req *http.Request) (*http.Response, er
 		return nil, fmt.Errorf("could not retrieve Qbee auth token: %w", err)
 	}
 
+	fmt.Printf("req %v %v body %v", req.Method, req.URL, req.Body)
+
 	req.Header.Add("Authorization", "Bearer "+auth)
 
 	client := http.Client{}
@@ -326,7 +330,7 @@ func (c *HttpClient) ParseJsonBody(r *http.Response, response any) error {
 		return err
 	}
 
-	log.Printf("raw json: %v", string(b))
+	log.Printf("response body: %v", string(b))
 
 	err = json.Unmarshal(b, &response)
 	if err != nil {
