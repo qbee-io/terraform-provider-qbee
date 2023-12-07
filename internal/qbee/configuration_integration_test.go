@@ -110,7 +110,7 @@ func Test_change_lifecycle(t *testing.T) {
 		require.NotNil(t, bd.FileDistribution)
 		require.NotNil(t, bd.SoftwareManagement)
 
-		var actualFiles = bd.FileDistribution.Files
+		var actualFiles = bd.FileDistribution.FiledistributionFiles
 		require.Len(t, actualFiles, 1)
 		require.Len(t, actualFiles[0].Templates, 1)
 		assert.Equal(t, actualFiles[0].Templates[0].Source, "/some/source")
@@ -120,7 +120,7 @@ func Test_change_lifecycle(t *testing.T) {
 		assert.Equal(t, actualFiles[0].Parameters[0].Key, "key")
 		assert.Equal(t, actualFiles[0].Parameters[0].Value, "value")
 
-		var actualItems = bd.SoftwareManagement.Items
+		var actualItems = bd.SoftwareManagement.SoftwareItems
 		require.Len(t, actualItems, 1)
 		assert.Equal(t, actualItems[0].Package, "TestPackage")
 		assert.Equal(t, actualItems[0].ServiceName, "TestName")

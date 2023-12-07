@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/google/go-querystring/query"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -31,6 +30,7 @@ type HttpClient struct {
 	Configuration      *ConfigurationService
 	FileDistribution   *FileDistributionService
 	SoftwareManagement *SoftwaremanagementService
+	Firewall           *FirewallService
 }
 
 type QbeeApiErrorResponse struct {
@@ -104,6 +104,7 @@ func NewClient(username string, password string, options ...ClientOptionFunc) (*
 	c.Configuration = &ConfigurationService{Client: c}
 	c.FileDistribution = &FileDistributionService{Client: c}
 	c.SoftwareManagement = &SoftwaremanagementService{Client: c}
+	c.Firewall = &FirewallService{Client: c}
 
 	return c, nil
 }
@@ -322,16 +323,12 @@ func (c *HttpClient) BaseURL() *url.URL {
 func (c *HttpClient) ParseJsonBody(r *http.Response, response any) error {
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
-		log.Printf("error while reading body from response: %v", r)
-		return err
+		return fmt.Errorf("error while reading body from response: '%v' %w", r, err)
 	}
-
-	log.Printf("raw json: %v", string(b))
 
 	err = json.Unmarshal(b, &response)
 	if err != nil {
-		log.Printf("could not parse json: '%v'", string(b))
-		return err
+		return fmt.Errorf("could not parse json: '%v' %w", string(b), err)
 	}
 
 	return nil

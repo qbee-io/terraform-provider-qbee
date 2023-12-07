@@ -2,20 +2,20 @@ package qbee
 
 import "fmt"
 
-const formtype_softwaremanagement = "software_management"
+const formtype_firewall = "firewall"
 
-type SoftwaremanagementService struct {
+type FirewallService struct {
 	Client *HttpClient
 }
 
-func (s SoftwaremanagementService) Create(ct ConfigType, id string, items []SoftwareManagementItem, extend bool) (*Change, error) {
+func (s FirewallService) Create(ct ConfigType, id string, tables FirewallTables, extend bool) (*Change, error) {
 	p := ChangePayload{
-		Formtype: formtype_softwaremanagement,
+		Formtype: formtype_firewall,
 		Extend:   extend,
 		Config: ChangePayloadConfig{
 			Version: "v1",
 			Enabled: true,
-			Items:   items,
+			Tables:  tables,
 		},
 	}
 
@@ -27,15 +27,15 @@ func (s SoftwaremanagementService) Create(ct ConfigType, id string, items []Soft
 
 	r, err := s.Client.Configuration.CreateChange(p)
 	if err != nil {
-		return nil, fmt.Errorf("CreateTagFileDistribution: %w", err)
+		return nil, fmt.Errorf("CreateTagFirewall: %w", err)
 	}
 
 	return r, nil
 }
 
-func (s SoftwaremanagementService) Clear(ct ConfigType, id string) (*Change, error) {
+func (s FirewallService) Clear(ct ConfigType, id string) (*Change, error) {
 	p := ChangePayload{
-		Formtype: formtype_softwaremanagement,
+		Formtype: formtype_firewall,
 		Config: ChangePayloadConfig{
 			ResetToGroup: true,
 		},
@@ -55,11 +55,11 @@ func (s SoftwaremanagementService) Clear(ct ConfigType, id string) (*Change, err
 	return r, nil
 }
 
-func (s SoftwaremanagementService) Get(ct ConfigType, id string) (*BundleConfiguration, error) {
+func (s FirewallService) Get(ct ConfigType, id string) (*BundleConfiguration, error) {
 	resp, err := s.Client.Configuration.GetConfiguration(ct, id)
 	if err != nil {
 		return nil, err
 	}
 
-	return resp.Config.BundleData.SoftwareManagement, nil
+	return resp.Config.BundleData.Firewall, nil
 }

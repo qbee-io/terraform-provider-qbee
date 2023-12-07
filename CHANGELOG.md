@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Support for the qbee_firewall resource. This can be used to set firewall configuration on nodes and tags.
+
 ## [0.5.2] - 2023-09-14
 
 ### Fixed

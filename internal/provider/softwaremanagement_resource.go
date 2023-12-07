@@ -452,7 +452,7 @@ func (r *softwaremanagementResource) readSoftwareManagement(ctx context.Context,
 	state.Extend = types.BoolValue(currentState.Extend)
 
 	var items []softwareManagementItemModel
-	for _, item := range currentState.Items {
+	for _, item := range currentState.SoftwareItems {
 		value, diags := fromQbeeItem(ctx, item)
 		if diags.HasError() {
 			return diags

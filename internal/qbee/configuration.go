@@ -112,8 +112,8 @@ type CommitResponse struct {
 }
 
 type ChangePayload struct {
-	NodeId   string              `json:"node_id"`
-	Tag      string              `json:"tag"`
+	NodeId   string              `json:"node_id,omitempty"`
+	Tag      string              `json:"tag,omitempty"`
 	Formtype string              `json:"formtype"`
 	Config   ChangePayloadConfig `json:"config"`
 	Extend   bool                `json:"extend"`
@@ -122,9 +122,10 @@ type ChangePayload struct {
 type ChangePayloadConfig struct {
 	Version      string                   `json:"version"`
 	Enabled      bool                     `json:"enabled"`
-	ResetToGroup bool                     `json:"reset_to_group"`
-	Files        []FiledistributionFile   `json:"files"`
-	Items        []SoftwareManagementItem `json:"items"`
+	ResetToGroup bool                     `json:"reset_to_group,omitempty"`
+	Files        []FiledistributionFile   `json:"files,omitempty"`
+	Items        []SoftwareManagementItem `json:"items,omitempty"`
+	Tables       FirewallTables           `json:"tables,omitempty"`
 }
 
 type Change struct {
@@ -163,8 +164,9 @@ type GetConfigurationResponse struct {
 }
 
 type ConfigurationBundleData struct {
-	FileDistribution   *FileDistribution   `json:"file_distribution"`
-	SoftwareManagement *SoftwareManagement `json:"software_management"`
+	FileDistribution   *BundleConfiguration `json:"file_distribution"`
+	SoftwareManagement *BundleConfiguration `json:"software_management"`
+	Firewall           *BundleConfiguration `json:"firewall"`
 }
 
 func (c *ConfigurationBundleData) UnmarshalJSON(data []byte) error {
@@ -174,8 +176,9 @@ func (c *ConfigurationBundleData) UnmarshalJSON(data []byte) error {
 		// It looks like an object; We can actually try unmarshalling it into the
 		// ConfigurationBundleData.
 		var v struct {
-			FileDistribution   *FileDistribution   `json:"file_distribution"`
-			SoftwareManagement *SoftwareManagement `json:"software_management"`
+			FileDistribution   *BundleConfiguration `json:"file_distribution"`
+			SoftwareManagement *BundleConfiguration `json:"software_management"`
+			Firewall           *BundleConfiguration `json:"firewall"`
 		}
 		err := json.Unmarshal(data, &v)
 		if err != nil {
@@ -184,17 +187,20 @@ func (c *ConfigurationBundleData) UnmarshalJSON(data []byte) error {
 
 		c.FileDistribution = v.FileDistribution
 		c.SoftwareManagement = v.SoftwareManagement
+		c.Firewall = v.Firewall
 	}
 
 	return nil
 }
 
-type FileDistribution struct {
-	Enabled        bool                   `json:"enabled"`
-	Extend         bool                   `json:"extend"`
-	Version        string                 `json:"version"`
-	BundleCommitId string                 `json:"bundle_commit_id"`
-	Files          []FiledistributionFile `json:"files"`
+type BundleConfiguration struct {
+	Enabled               bool                     `json:"enabled"`
+	Extend                bool                     `json:"extend"`
+	Version               string                   `json:"version"`
+	BundleCommitId        string                   `json:"bundle_commit_id"`
+	FiledistributionFiles []FiledistributionFile   `json:"files"`
+	SoftwareItems         []SoftwareManagementItem `json:"items"`
+	FirewallTables        FirewallTables           `json:"tables"`
 }
 
 type FiledistributionFile struct {
@@ -214,14 +220,6 @@ type FiledistributionParameter struct {
 	Value string `json:"value"`
 }
 
-type SoftwareManagement struct {
-	Enabled        bool                     `json:"enabled"`
-	Extend         bool                     `json:"extend"`
-	Version        string                   `json:"version"`
-	BundleCommitId string                   `json:"bundle_commit_id"`
-	Items          []SoftwareManagementItem `json:"items"`
-}
-
 type SoftwareManagementItem struct {
 	Package      string                         `json:"package"`
 	ServiceName  string                         `json:"service_name"`
@@ -238,4 +236,24 @@ type SoftwareManagementConfigFile struct {
 type SoftwareManagementParameter struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
+}
+
+type FirewallTables struct {
+	Filter FirewallFilter `json:"filter"`
+}
+
+type FirewallFilter struct {
+	Input FirewallConfig `json:"INPUT"`
+}
+
+type FirewallConfig struct {
+	Policy string         `json:"policy"`
+	Rules  []FirewallRule `json:"rules"`
+}
+
+type FirewallRule struct {
+	Proto   string `json:"proto"`
+	Target  string `json:"target"`
+	SrcIp   string `json:"srcIp"`
+	DstPort string `json:"dstPort"`
 }
