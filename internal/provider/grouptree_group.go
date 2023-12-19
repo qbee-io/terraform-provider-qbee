@@ -144,6 +144,7 @@ func (r *grouptreeGroupResource) Read(ctx context.Context, req resource.ReadRequ
 	readResponse, err := r.client.Grouptree.Get(id)
 	if err != nil {
 		resp.Diagnostics.AddError("Error reading Grouptree resource", "could not read grouptree resource: "+err.Error())
+		return
 	}
 
 	state.Title = types.StringValue(readResponse.Title)

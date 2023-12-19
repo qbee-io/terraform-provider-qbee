@@ -36,14 +36,6 @@ pipeline {
             }
         }
 
-        stage('Compile') {
-            steps {
-                container('golang') {
-                    sh 'go build'
-                }
-            }
-        }
-
         stage('Test') {
             steps {
                 container('golang') {
