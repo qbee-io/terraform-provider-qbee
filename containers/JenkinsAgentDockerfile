@@ -1,6 +1,8 @@
 FROM hashicorp/terraform:1.5.6
 
 ARG ARCH
+ARG PROVIDER_VERSION
+ARG BUILD_RELEASE=false
 
 RUN apk add bash git curl wget && \
   git config --global --add safe.directory '*' && \
@@ -10,10 +12,25 @@ RUN apk add bash git curl wget && \
   chmod +x /usr/local/go/bin/go && \
   rm go1.21.1.linux-$ARCH.tar.gz
 
-WORKDIR /provider
+ENV PATH=$PATH:/usr/local/go/bin:/root/go/bin
+RUN go install github.com/goreleaser/goreleaser@v1.24.0
+
+WORKDIR /build
 ADD . ./
-RUN /usr/local/go/bin/go install .
+
+ENV TARGET_DIR="/providers/terraform.booqsoftware.com/qbee/qbee/$PROVIDER_VERSION/linux_${ARCH}"
+
+RUN if [ "$BUILD_RELEASE" == "true" ]; then \
+  goreleaser build --clean --single-target; \
+else \
+  goreleaser build --snapshot --clean --single-target; \
+fi
+
+RUN mkdir -p "$TARGET_DIR" && \
+  cp dist/terraform-provider-qbee*/terraform-provider-qbee_* "$TARGET_DIR"
+
+# RUN /usr/local/go/bin/go install .
 
 ADD containers/.terraformrc /root/.terraformrc
 
-WORKDIR /project
+WORKDIR /workspace
