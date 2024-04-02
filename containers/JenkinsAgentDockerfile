@@ -1,8 +1,6 @@
 FROM hashicorp/terraform:1.5.6
 
 ARG ARCH
-ARG PROVIDER_VERSION
-ARG BUILD_RELEASE=false
 
 RUN apk add bash git curl wget && \
   git config --global --add safe.directory '*' && \
@@ -18,6 +16,8 @@ RUN go install github.com/goreleaser/goreleaser@v1.24.0
 WORKDIR /build
 ADD . ./
 
+ARG PROVIDER_VERSION
+ARG BUILD_RELEASE=false
 ENV TARGET_DIR="/providers/terraform.booqsoftware.com/qbee/qbee/$PROVIDER_VERSION/linux_${ARCH}"
 
 RUN if [ "$BUILD_RELEASE" == "true" ]; then \
@@ -29,7 +29,10 @@ fi
 RUN mkdir -p "$TARGET_DIR" && \
   cp dist/terraform-provider-qbee*/terraform-provider-qbee_* "$TARGET_DIR"
 
-# RUN /usr/local/go/bin/go install .
+RUN ls -l /providers
+RUN ls -l /providers/terraform.booqsoftware.com/
+RUN ls -l /providers/terraform.booqsoftware.com/qbee/qbee/
+RUN ls -l /providers/terraform.booqsoftware.com/qbee/qbee/$PROVIDER_VERSION/
 
 ADD containers/.terraformrc /root/.terraformrc
 
