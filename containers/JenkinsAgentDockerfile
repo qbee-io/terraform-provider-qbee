@@ -3,10 +3,10 @@ FROM hashicorp/terraform:1.5.6
 RUN apk add bash git curl wget && \
   git config --global --add safe.directory '*' && \
   export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin && \
-  wget https://go.dev/dl/go1.21.1.linux-amd64.tar.gz && \
-  tar -xf go1.21.1.linux-amd64.tar.gz -C /usr/local && \
+  wget https://go.dev/dl/go1.21.1.linux-$TARGETARCH.tar.gz && \
+  tar -xf go1.21.1.linux-$TARGETARCH.tar.gz -C /usr/local && \
   chmod +x /usr/local/go/bin/go && \
-  rm go1.21.1.linux-amd64.tar.gz
+  rm go1.21.1.linux-$TARGETARCH.tar.gz
 
 WORKDIR /provider
 ADD . ./
