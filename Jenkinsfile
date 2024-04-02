@@ -1,4 +1,4 @@
-@Library('jenkins-shared-lib@4.18.1') _
+@Library('jenkins-shared-lib@5.0.4') _
 
 pipeline {
     environment {
