@@ -61,15 +61,52 @@ pipeline {
 //        }
 
         stage('Jenkins Agent Container - Images') {
-            steps {
-                container('kaniko') {
-                    buildAndPublishOCIImageWithKaniko("${ECR_REPO}", "arm64", "--dockerfile=containers/JenkinsAgentDockerfile --build-arg ARCH=arm64")
+            parallel {
+                stage('amd64') {
+                    steps {
+                        container('kaniko') {
+                            buildAndPublishOCIImageWithKaniko("${ECR_REPO}", "amd64", "--dockerfile=containers/JenkinsAgentDockerfile --build-arg ARCH=amd64")
+                        }
+                    }
+                    agent {
+                        kubernetes {
+                            customWorkspace 'build'
+                            yaml '''
+                        spec:
+                            tolerations:
+                            - key: "kaniko"
+                              operator: "Equal"
+                              value: "true"
+                              effect: "NoSchedule"
+                            nodeSelector:
+                                kubernetes.io/arch: amd64
+                            containers:
+                            - name: kaniko
+                              image: 386815924651.dkr.ecr.eu-west-1.amazonaws.com/kaniko-project/executor:v1.16.0-debug
+                              imagePullPolicy: IfNotPresent
+                              resources:
+                                requests:
+                                  memory: "8192Mi"
+                              command:
+                              - sleep
+                              args:
+                              - 99d
+                    '''
+                            nodeSelector 'instance-type=spot'
+                        }
+                    }
                 }
-            }
-            agent {
-                kubernetes {
-                    customWorkspace 'build'
-                    yaml '''
+
+                stage('arm64') {
+                    steps {
+                        container('kaniko') {
+                            buildAndPublishOCIImageWithKaniko("${ECR_REPO}", "arm64", "--dockerfile=containers/JenkinsAgentDockerfile --build-arg ARCH=arm64")
+                        }
+                    }
+                    agent {
+                        kubernetes {
+                            customWorkspace 'build'
+                            yaml '''
                         spec:
                             tolerations:
                             - key: "kaniko"
@@ -90,7 +127,9 @@ pipeline {
                               args:
                               - 99d
                     '''
-                    nodeSelector 'instance-type=spot'
+                            nodeSelector 'instance-type=spot'
+                        }
+                    }
                 }
             }
         }
@@ -98,7 +137,7 @@ pipeline {
         stage('Jenkins Agent Container - OCI Manifest') {
             steps {
                 container('manifest-tool') {
-                    buildAndPublishOCIImageManifestWithManifestTool("${ECR_REPO}", "linux/arm64")
+                    buildAndPublishOCIImageManifestWithManifestTool("${ECR_REPO}", "linux/arm64,linux/amd64 ")
                 }
             }
             agent {
