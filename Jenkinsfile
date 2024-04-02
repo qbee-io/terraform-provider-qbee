@@ -63,7 +63,7 @@ pipeline {
         stage('Jenkins Agent Container - Images') {
             steps {
                 container('kaniko') {
-                    buildAndPublishOCIImageWithKaniko("${ECR_REPO}", "arm64", "--dockerfile=containers/JenkinsAgentDockerfile")
+                    buildAndPublishOCIImageWithKaniko("${ECR_REPO}", "arm64", "--dockerfile=containers/JenkinsAgentDockerfile --build-arg ARCH=arm64")
                 }
             }
             agent {
