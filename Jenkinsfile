@@ -68,7 +68,7 @@ pipeline {
                 stage('amd64') {
                     steps {
                         container('kaniko') {
-                            buildAndPublishOCIImageWithKaniko("${ECR_REPO}", "amd64", " --build-arg ARCH=amd64 --build-arg PROVIDER_VERSION=${env.PROVIDER_VERSION} --dockerfile=containers/JenkinsAgentDockerfile")
+                            buildAndPublishOCIImageWithKaniko("${ECR_REPO}", "amd64", " --build-arg TARGETARCH=amd64 --build-arg PROVIDER_VERSION=${env.PROVIDER_VERSION} --dockerfile=containers/JenkinsAgentDockerfile")
                         }
                     }
                     agent {
@@ -103,7 +103,7 @@ pipeline {
                 stage('arm64') {
                     steps {
                         container('kaniko') {
-                            buildAndPublishOCIImageWithKaniko("${ECR_REPO}", "arm64", " --build-arg ARCH=arm64 --build-arg PROVIDER_VERSION=${env.PROVIDER_VERSION} --dockerfile=containers/JenkinsAgentDockerfile")
+                            buildAndPublishOCIImageWithKaniko("${ECR_REPO}", "arm64", " --build-arg TARGETARCH=arm64 --build-arg PROVIDER_VERSION=${env.PROVIDER_VERSION} --dockerfile=containers/JenkinsAgentDockerfile")
                         }
                     }
                     agent {

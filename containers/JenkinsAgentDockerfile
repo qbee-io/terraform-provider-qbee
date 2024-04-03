@@ -1,29 +1,54 @@
-FROM hashicorp/terraform:1.5.6 AS builder
-
-ARG ARCH
-
-RUN apk add wget && \
-  git config --global --add safe.directory '*' && \
-  export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin && \
-  wget https://go.dev/dl/go1.21.1.linux-$ARCH.tar.gz && \
-  tar -xf go1.21.1.linux-$ARCH.tar.gz -C /usr/local && \
-  chmod +x /usr/local/go/bin/go && \
-  rm go1.21.1.linux-$ARCH.tar.gz
-
-ENV PATH=$PATH:/usr/local/go/bin:/root/go/bin
+FROM golang:1.22-bookworm AS builder
 
 WORKDIR /build
 ADD . ./
 
 RUN go build
 
-FROM hashicorp/terraform:1.5.6 AS runner
-
-RUN apk add bash git curl
+FROM alpine/helm:3.9.3 AS runner
 
 ARG PROVIDER_VERSION
-ARG ARCH
-ENV TARGET_DIR="/providers/terraform.booqsoftware.com/qbee/qbee/$PROVIDER_VERSION/linux_${ARCH}"
+ARG TARGETARCH
+ARG TERRAFORM_VERSION=1.7.5
+
+RUN apk -v --no-cache --update add \
+    curl \
+    libc6-compat \
+    python3 \
+    git \
+    go \
+    bash \
+    jq \
+    make \
+    zip \
+    aws-cli \
+    openssh-client
+
+RUN python3 -m ensurepip --upgrade \
+    && pip3 install --upgrade pip \
+    && pip3 install --upgrade pre-commit \
+    && pip3 uninstall --yes pip \
+    && helm plugin install https://github.com/hypnoglow/helm-s3.git
+
+RUN curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+RUN export GCLOUD_FILE='google-cloud-cli-418.0.0-linux-x86_64.tar.gz' \
+    && export ARCH='amd64' \
+    && if [ "$TARGETARCH" = "arm64" ] ; then \
+        export GCLOUD_FILE='google-cloud-cli-418.0.0-linux-arm.tar.gz'; \
+        export ARCH='arm64'; \
+       fi; \
+    echo "Installing $GCLOUD_FILE" \
+    && curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/$GCLOUD_FILE \
+    && tar -xf $GCLOUD_FILE \
+    && ./google-cloud-sdk/install.sh \
+    && export PATH=$PATH:./google-cloud-sdk/bin \
+    && rm -rf /tmp/* ;
+
+ENV PATH="${PATH}:./google-cloud-sdk/bin"
+RUN curl -L https://raw.githubusercontent.com/warrensbox/terraform-switcher/release/install.sh | bash
+RUN tfswitch --latest-stable=1.7
+
+ENV TARGET_DIR="/providers/terraform.booqsoftware.com/qbee/qbee/$PROVIDER_VERSION/linux_${TARGETARCH}"
 COPY --from=builder /build/terraform-provider-qbee "$TARGET_DIR/terraform-provider-qbee_v$PROVIDER_VERSION"
 ADD containers/.terraformrc /root/.terraformrc
 
