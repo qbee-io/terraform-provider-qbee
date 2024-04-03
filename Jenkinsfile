@@ -35,7 +35,10 @@ pipeline {
         stage('Prepare') {
             steps {
                 container('golang') {
-                    sh "git config --global --add safe.directory '*'"
+                    script {
+                        sh "git config --global --add safe.directory '*'"
+                        env.PROVIDER_VERSION = sh(script: "git describe --abbrev=0 --tags", returnStdout: true).trim()
+                    }
                 }
             }
         }
@@ -65,7 +68,7 @@ pipeline {
                 stage('amd64') {
                     steps {
                         container('kaniko') {
-                            buildAndPublishImage("${ECR_REPO}", "amd64")
+                            buildAndPublishOCIImageWithKaniko("${ECR_REPO}", "amd64", " --build-arg ARCH=amd64 --build-arg PROVIDER_VERSION=${env.PROVIDER_VERSION} --dockerfile=containers/JenkinsAgentDockerfile")
                         }
                     }
                     agent {
@@ -100,7 +103,7 @@ pipeline {
                 stage('arm64') {
                     steps {
                         container('kaniko') {
-                            buildAndPublishImage("${ECR_REPO}", "arm64")
+                            buildAndPublishOCIImageWithKaniko("${ECR_REPO}", "arm64", " --build-arg ARCH=arm64 --build-arg PROVIDER_VERSION=${env.PROVIDER_VERSION} --dockerfile=containers/JenkinsAgentDockerfile")
                         }
                     }
                     agent {
@@ -159,55 +162,5 @@ pipeline {
                 }
             }
         }
-    }
-}
-
-def buildAndPublishImage(ecrRepo, architecture) {
-    def IMAGE_VERSION
-    def IMAGE_TAG
-    def AWS_ACCOUNT_ID="386815924651"
-    def AWS_REGION="eu-west-1"
-    def ECR_URL="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-    def SNAPSHOTS_ECR_URL="${ECR_URL}/snapshots${ecrRepo}"
-    def RELEASES_ECR_URL="${ECR_URL}/releases${ecrRepo}"
-    def BRANCH_NAME_UNDERSCORE=sh(script: "echo ${env.BRANCH_NAME} | tr '/' '_'", returnStdout: true).trim()
-    def GIT_COMMIT_SHORT=sh(script: "echo ${GIT_COMMIT} | cut -c1-8", returnStdout: true).trim()
-
-    echo "ARCHITECTURE: ${architecture}"
-    echo "SNAPSHOTS_ECR_URL: ${SNAPSHOTS_ECR_URL}"
-    echo "RELEASES_ECR_URL: ${RELEASES_ECR_URL}"
-    echo "BRANCH_NAME_UNDERSCORE: ${BRANCH_NAME_UNDERSCORE}"
-    echo "GIT_COMMIT_SHORT: ${GIT_COMMIT_SHORT}"
-
-    def PROVIDER_VERSION=sh(script: "git describe --abbrev=0 --tags", returnStdout: true).trim()
-
-    if(env.TAG_NAME == null) {
-        // SNAPSHOT
-        IMAGE_VERSION=sh(script: "echo ${BRANCH_NAME_UNDERSCORE}_${GIT_COMMIT_SHORT}", returnStdout: true).trim()
-        echo "IMAGE_VERSION: ${IMAGE_VERSION}"
-        echo "PROVIDER_VERSION: ${PROVIDER_VERSION}"
-
-        def ARGS = " --build-arg ARCH=${architecture} --build-arg BUILD_RELEASE=false --build-arg VERSION=${PROVIDER_VERSION}"
-
-        sh """
-            /kaniko/executor --dockerfile=containers/JenkinsAgentDockerfile \
-                             --context=`pwd` \
-                             --destination=${SNAPSHOTS_ECR_URL}:${IMAGE_VERSION}-${architecture} \
-                             --destination=${SNAPSHOTS_ECR_URL}:${BRANCH_NAME_UNDERSCORE}_LATEST-${architecture} \
-                             ${ARGS}
-        """
-    } else {
-        // RELEASE
-        IMAGE_VERSION="${env.TAG_NAME}"
-        echo "IMAGE_VERSION: ${IMAGE_VERSION}"
-
-        def ARGS = " --build-arg ARCH=${architecture} --build-arg BUILD_RELEASE=true --build-arg VERSION=${PROVIDER_VERSION}"
-
-        sh """
-            /kaniko/executor --dockerfile=containers/JenkinsAgentDockerfile \
-                             --context=`pwd` \
-                             --destination=${RELEASES_ECR_URL}:${IMAGE_VERSION}-${architecture} \
-                             ${ARGS}
-        """
     }
 }
