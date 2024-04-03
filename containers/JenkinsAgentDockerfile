@@ -1,4 +1,4 @@
-FROM hashicorp/terraform:1.5.6
+FROM hashicorp/terraform:1.5.6 AS builder
 
 ARG ARCH
 
@@ -11,29 +11,20 @@ RUN apk add bash git curl wget && \
   rm go1.21.1.linux-$ARCH.tar.gz
 
 ENV PATH=$PATH:/usr/local/go/bin:/root/go/bin
-RUN go install github.com/goreleaser/goreleaser@v1.24.0
 
 WORKDIR /build
 ADD . ./
 
+RUN go build
+
+FROM hashicorp/terraform:1.5.6 AS runner
+
 ARG PROVIDER_VERSION
-ARG BUILD_RELEASE=false
+ARG ARCH
 ENV TARGET_DIR="/providers/terraform.booqsoftware.com/qbee/qbee/$PROVIDER_VERSION/linux_${ARCH}"
-
-RUN if [ "$BUILD_RELEASE" == "true" ]; then \
-  goreleaser build --clean --single-target; \
-else \
-  goreleaser build --snapshot --clean --single-target; \
-fi
-
-RUN mkdir -p "$TARGET_DIR" && \
-  cp dist/terraform-provider-qbee*/terraform-provider-qbee_* "$TARGET_DIR"
-
-RUN ls -l /providers
-RUN ls -l /providers/terraform.booqsoftware.com/
-RUN ls -l /providers/terraform.booqsoftware.com/qbee/qbee/
-RUN ls -l /providers/terraform.booqsoftware.com/qbee/qbee/$PROVIDER_VERSION/
-
+COPY --from=builder /build/terraform-provider-qbee "$TARGET_DIR/terraform-provider-qbee_v$PROVIDER_VERSION"
 ADD containers/.terraformrc /root/.terraformrc
+
+RUN echo "/providers:" && find /providers
 
 WORKDIR /workspace

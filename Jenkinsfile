@@ -179,13 +179,15 @@ def buildAndPublishImage(ecrRepo, architecture) {
     echo "BRANCH_NAME_UNDERSCORE: ${BRANCH_NAME_UNDERSCORE}"
     echo "GIT_COMMIT_SHORT: ${GIT_COMMIT_SHORT}"
 
+    def PROVIDER_VERSION=sh(script: "git describe --abbrev=0 --tags", returnStdout: true).trim()
+
     if(env.TAG_NAME == null) {
         // SNAPSHOT
         IMAGE_VERSION=sh(script: "echo ${BRANCH_NAME_UNDERSCORE}_${GIT_COMMIT_SHORT}", returnStdout: true).trim()
         echo "IMAGE_VERSION: ${IMAGE_VERSION}"
+        echo "PROVIDER_VERSION: ${PROVIDER_VERSION}"
 
-        // TODO: FIx the hardcoded version
-        def ARGS = " --build-arg ARCH=${architecture} --build-arg BUILD_RELEASE=false --build-arg VERSION=0.6.2"
+        def ARGS = " --build-arg ARCH=${architecture} --build-arg BUILD_RELEASE=false --build-arg VERSION=${PROVIDER_VERSION}"
 
         sh """
             /kaniko/executor --dockerfile=containers/JenkinsAgentDockerfile \
@@ -199,7 +201,7 @@ def buildAndPublishImage(ecrRepo, architecture) {
         IMAGE_VERSION="${env.TAG_NAME}"
         echo "IMAGE_VERSION: ${IMAGE_VERSION}"
 
-        def ARGS = " --build-arg ARCH=${architecture} --build-arg BUILD_RELEASE=true --build-arg VERSION=${IMAGE_VERSION}"
+        def ARGS = " --build-arg ARCH=${architecture} --build-arg BUILD_RELEASE=true --build-arg VERSION=${PROVIDER_VERSION}"
 
         sh """
             /kaniko/executor --dockerfile=containers/JenkinsAgentDockerfile \
