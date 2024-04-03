@@ -43,25 +43,25 @@ pipeline {
             }
         }
 
-//        stage('Test') {
-//            steps {
-//                container('golang') {
-//                    sh 'go test ./...'
-//                }
-//            }
-//        }
-//
-//        stage ('Release') {
-//            when {
-//                buildingTag()
-//            }
-//
-//            steps {
-//                container('golang') {
-//                    sh 'curl -sfL https://goreleaser.com/static/run | bash -s -- release --skip-sign --clean'
-//                }
-//            }
-//        }
+        stage('Test') {
+            steps {
+                container('golang') {
+                    sh 'go test ./...'
+                }
+            }
+        }
+
+        stage ('Release Build') {
+            when {
+                buildingTag()
+            }
+
+            steps {
+                container('golang') {
+                    sh 'curl -sfL https://goreleaser.com/static/run | bash -s -- release --skip-sign --clean'
+                }
+            }
+        }
 
         stage('Jenkins Agent Container - Images') {
             parallel {

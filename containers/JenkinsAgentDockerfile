@@ -25,6 +25,4 @@ ENV TARGET_DIR="/providers/terraform.booqsoftware.com/qbee/qbee/$PROVIDER_VERSIO
 COPY --from=builder /build/terraform-provider-qbee "$TARGET_DIR/terraform-provider-qbee_v$PROVIDER_VERSION"
 ADD containers/.terraformrc /root/.terraformrc
 
-RUN echo "/providers:" && find /providers
-
 WORKDIR /workspace
