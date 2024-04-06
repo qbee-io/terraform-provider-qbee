@@ -24,7 +24,11 @@ RUN apk -v --no-cache --update add \
     git \
     curl \
     jq \
+    openssl \
     openssh-client
+
+RUN curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+RUN helm plugin install https://github.com/hypnoglow/helm-s3.git --version 0.16.0
 
 ARG PROVIDER_VERSION
 ARG TARGETARCH
