@@ -1,12 +1,14 @@
 package provider
 
 import (
-	"bitbucket.org/booqsoftware/terraform-provider-qbee/internal/qbee"
 	"context"
+
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+
+	"go.qbee.io/terraform/internal/qbee"
 )
 
 func typeAndIdentifier(tag types.String, node types.String) (qbee.ConfigType, string) {

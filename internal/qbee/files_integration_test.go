@@ -5,11 +5,12 @@ package qbee
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"io"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_file_lifecycle(t *testing.T) {

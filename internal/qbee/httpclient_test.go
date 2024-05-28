@@ -3,12 +3,13 @@ package qbee
 import (
 	"bytes"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func setup(t *testing.T) (*http.ServeMux, *HttpClient) {

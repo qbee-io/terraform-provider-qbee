@@ -4,9 +4,10 @@ package qbee
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func Test_get_test_device_from_inventory(t *testing.T) {

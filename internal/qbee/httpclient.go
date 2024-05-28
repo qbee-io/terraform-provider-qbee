@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/google/go-querystring/query"
 	"io"
 	"net/http"
 	"net/url"
 	"path"
 	"strings"
+
+	"github.com/google/go-querystring/query"
 )
 
 const (

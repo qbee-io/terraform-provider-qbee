@@ -3,9 +3,10 @@
 package qbee
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func Test_change_lifecycle(t *testing.T) {

@@ -32,7 +32,7 @@ RUN helm plugin install https://github.com/hypnoglow/helm-s3.git --version 0.16.
 
 ARG PROVIDER_VERSION
 ARG TARGETARCH
-ENV TARGET_DIR="/providers/terraform.booqsoftware.com/qbee/qbee/$PROVIDER_VERSION/linux_${TARGETARCH}"
+ENV TARGET_DIR="/providers/qbee.io/terraform/$PROVIDER_VERSION/linux_${TARGETARCH}"
 COPY --from=builder /build/terraform-provider-qbee "$TARGET_DIR/terraform-provider-qbee_v$PROVIDER_VERSION"
 ADD containers/.terraformrc /root/.terraformrc
 

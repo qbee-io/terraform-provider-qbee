@@ -2,13 +2,14 @@ package qbee
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDownloadFile(t *testing.T) {
