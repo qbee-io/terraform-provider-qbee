@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     qbee = {
-      source = "terraform.booqsoftware.com/qbee/qbee"
+      source = "github.com/qbee-io/terraform-provider-qbee"
     }
   }
 }
