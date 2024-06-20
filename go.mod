@@ -1,4 +1,4 @@
-module github.com/qbee-io/terraform-provider-qbee
+module github.com/github.com/lesteenman/terraform-provider-qbee-lesteenman
 
 go 1.20
 

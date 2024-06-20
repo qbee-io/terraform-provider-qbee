@@ -2,11 +2,11 @@ package provider
 
 import (
 	"context"
+	"github.com/github.com/lesteenman/terraform-provider-qbee-lesteenman/internal/qbee"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"github.com/qbee-io/terraform-provider-qbee/internal/qbee"
 )
 
 func typeAndIdentifier(tag types.String, node types.String) (qbee.ConfigType, string) {

@@ -2,13 +2,13 @@ package provider
 
 import (
 	"context"
+	"github.com/github.com/lesteenman/terraform-provider-qbee-lesteenman/internal/qbee"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/qbee-io/terraform-provider-qbee/internal/qbee"
 	"os"
 )
 
