@@ -30,7 +30,7 @@ terraform project where you want to use it:
 # From the root of your terraform project (where your *.tf files are stored):
 GOOS=$(go env GOOS)
 GOARCH=$(go env GOARCH)
-TARGET_DIR=".terraform/plugins/github.com/github.com/lesteenman/terraform-provider-qbee-lesteenman/$VERSION/${GOOS}_${GOARCH}"
+TARGET_DIR=".terraform/plugins/github.com/lesteenman/terraform-provider-qbee-lesteenman/$VERSION/${GOOS}_${GOARCH}"
 
 mkdir -p "$TARGET_DIR"
 cp <dist> "$TARGET_DIR"

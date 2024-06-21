@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"github.com/github.com/lesteenman/terraform-provider-qbee-lesteenman/internal/qbee"
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -13,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/lesteenman/terraform-provider-qbee-lesteenman/internal/qbee"
 	"strings"
 )
 
