@@ -5,8 +5,8 @@ resource "qbee_softwaremanagement" "example" {
 
   items = [
     {
-      package = "mysql",
-      service_name = "service",
+      package       = "mysql",
+      service_name  = "service",
       pre_condition = "/a/b/c/",
       config_files = [
         {
@@ -16,7 +16,7 @@ resource "qbee_softwaremanagement" "example" {
       ]
       parameters = [
         {
-          key = "param1"
+          key   = "param1"
           value = "value1"
         }
       ]

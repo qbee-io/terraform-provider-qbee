@@ -5,26 +5,26 @@ resource "qbee_filedistribution" "example_tag" {
   files = [
     {
       pre_condition = "/bin/true"
-      command = "date -u > /tmp/last-updated.txt"
+      command       = "date -u > /tmp/last-updated.txt"
       templates = [
         {
-          source = "/example/file.txt.template"
+          source      = "/example/file.txt.template"
           destination = "/target/path.txt"
           is_template = true
         },
         {
-          source = "/example/file2.json"
+          source      = "/example/file2.json"
           destination = "/target/path2.json"
           is_template = false
         }
       ]
       parameters = [
         {
-          key = "param-key-1"
+          key   = "param-key-1"
           value = "param-value-1"
         },
         {
-          key = "param-key-2"
+          key   = "param-key-2"
           value = "param-value-2"
         }
       ]
@@ -40,7 +40,7 @@ resource "qbee_filedistribution" "example_node" {
     {
       templates = [
         {
-          source = "/example/file2.json"
+          source      = "/example/file2.json"
           destination = "/target/path2.json"
           is_template = false
         }
