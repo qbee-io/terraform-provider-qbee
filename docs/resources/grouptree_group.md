@@ -21,4 +21,6 @@ description: |-
 - `id` (String) NodeId of the group
 - `title` (String) Title of the group
 
+### Optional
 
+- `tags` (List of String) A list of tags to add to the group
