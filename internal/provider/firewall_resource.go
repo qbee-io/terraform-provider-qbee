@@ -14,7 +14,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/lesteenman/terraform-provider-qbee-lesteenman/internal/qbee"
+	"go.qbee.io/client"
+	"go.qbee.io/client/config"
 	"strings"
 )
 
@@ -26,12 +27,19 @@ var (
 	_ resource.ResourceWithImportState      = &firewallResource{}
 )
 
+const (
+	errorImportingFirewall = "error importing firewall resource"
+	errorWritingFirewall   = "error writing firewall resource"
+	errorReadingFirewall   = "error reading firewall resource"
+	errorDeletingFirewall  = "error deleting firewall resource"
+)
+
 func NewFirewallResource() resource.Resource {
 	return &firewallResource{}
 }
 
 type firewallResource struct {
-	client *qbee.HttpClient
+	client *client.Client
 }
 
 // Metadata returns the resource type name.
@@ -45,7 +53,7 @@ func (r *firewallResource) Configure(_ context.Context, req resource.ConfigureRe
 		return
 	}
 
-	r.client = req.ProviderData.(*qbee.HttpClient)
+	r.client = req.ProviderData.(*client.Client)
 }
 
 // Schema defines the schema for the resource.
@@ -134,8 +142,24 @@ type firewallResourceModel struct {
 	Input  *firewallInput `tfsdk:"input"`
 }
 
-func (m firewallResourceModel) typeAndIdentifier() (qbee.ConfigType, string) {
+func (m firewallResourceModel) typeAndIdentifier() (config.EntityType, string) {
 	return typeAndIdentifier(m.Tag, m.Node)
+}
+
+func (i firewallInput) toQbeeFirewallChain() config.FirewallChain {
+	var rules []config.FirewallRule
+	for _, rule := range i.Rules {
+		rules = append(rules, config.FirewallRule{
+			Protocol:        config.Protocol(rule.Proto.ValueString()),
+			Target:          config.Target(rule.Target.ValueString()),
+			SourceIP:        rule.SrcIp.ValueString(),
+			DestinationPort: rule.DstPort.ValueString(),
+		})
+	}
+	return config.FirewallChain{
+		Policy: config.Target(i.Policy.ValueString()),
+		Rules:  rules,
+	}
 }
 
 type firewallInput struct {
@@ -177,6 +201,62 @@ func (r *firewallResource) Create(ctx context.Context, req resource.CreateReques
 	}
 }
 
+// Read refreshes the Terraform state with the latest data.
+func (r *firewallResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	// Get the current state
+	var state *firewallResourceModel
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	configType, identifier := state.typeAndIdentifier()
+
+	// Read the real status
+	activeConfig, err := r.client.GetActiveConfig(ctx, configType, identifier, config.EntityConfigScopeOwn)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			errorReadingFirewall,
+			"error reading the active configuration: "+err.Error(),
+		)
+
+		return
+	}
+
+	// Update the current state
+	currentFirewall := activeConfig.BundleData.Firewall
+	if currentFirewall == nil {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	var inputRules []firewallRule
+	inputChain := currentFirewall.Tables[config.Filter][config.Input]
+	for _, rule := range inputChain.Rules {
+		inputRules = append(inputRules, firewallRule{
+			Proto:   types.StringValue(string(rule.Protocol)),
+			Target:  types.StringValue(string(rule.Target)),
+			SrcIp:   types.StringValue(rule.SourceIP),
+			DstPort: types.StringValue(rule.DestinationPort),
+		})
+	}
+	input := firewallInput{
+		Policy: types.StringValue(string(inputChain.Policy)),
+		Rules:  inputRules,
+	}
+
+	state.ID = types.StringValue("placeholder")
+	state.Extend = types.BoolValue(currentFirewall.Extend)
+	state.Input = &input
+
+	diags = resp.State.Set(ctx, state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+}
+
 // Update updates the resource and sets the updated Terraform state on success.
 func (r *firewallResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	// Retrieve values from the plan
@@ -204,112 +284,6 @@ func (r *firewallResource) Update(ctx context.Context, req resource.UpdateReques
 	}
 }
 
-func (r *firewallResource) writeFirewall(ctx context.Context, plan firewallResourceModel) diag.Diagnostics {
-	var diags diag.Diagnostics
-
-	configType, identifier := plan.typeAndIdentifier()
-	extend := plan.Extend.ValueBool()
-
-	var mappedRules []qbee.FirewallRule
-	for _, rule := range plan.Input.Rules {
-		mappedRules = append(mappedRules, qbee.FirewallRule{
-			Proto:   rule.Proto.ValueString(),
-			Target:  rule.Target.ValueString(),
-			SrcIp:   rule.SrcIp.ValueString(),
-			DstPort: rule.DstPort.ValueString(),
-		})
-	}
-	var firewallTables = qbee.FirewallTables{
-		Filter: qbee.FirewallFilter{
-			Input: qbee.FirewallConfig{
-				Policy: plan.Input.Policy.ValueString(),
-				Rules:  mappedRules,
-			},
-		},
-	}
-
-	// Create the resource
-	tflog.Info(ctx, fmt.Sprintf("Setting firewall for %v %v", configType.String(), identifier))
-	createResponse, err := r.client.Firewall.Create(configType, identifier, firewallTables, extend)
-	if err != nil {
-		diags.AddError(
-			"Error creating firewall",
-			fmt.Sprintf("Error creating a firewall resource with qbee: %v", err),
-		)
-		return diags
-	}
-
-	_, err = r.client.Configuration.Commit("terraform: create firewall_resource")
-	if err != nil {
-		err = fmt.Errorf("error creating a commit for the firewall: %w", err)
-
-		err = r.client.Configuration.DeleteUncommitted(createResponse.Sha)
-		if err != nil {
-			err = fmt.Errorf("error deleting uncommitted firewall changes: %w", err)
-		}
-
-		diags.AddError(
-			"Error creating firewall",
-			fmt.Sprintf("Error while committing firewall change: %v", err),
-		)
-		return diags
-	}
-
-	return nil
-}
-
-// Read refreshes the Terraform state with the latest data.
-func (r *firewallResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	// Get the current state
-	var state *firewallResourceModel
-	diags := req.State.Get(ctx, &state)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-
-	configType, identifier := state.typeAndIdentifier()
-
-	// Read the real status
-	currentFirewall, err := r.client.Firewall.Get(configType, identifier)
-	if err != nil {
-		resp.Diagnostics.AddError("Could not read firewall",
-			"error reading the firewall resource: "+err.Error())
-
-		return
-	}
-
-	if currentFirewall == nil {
-		resp.State.RemoveResource(ctx)
-		return
-	}
-
-	// Update the current state
-	var inputRules []firewallRule
-	for _, rule := range currentFirewall.FirewallTables.Filter.Input.Rules {
-		inputRules = append(inputRules, firewallRule{
-			Proto:   types.StringValue(rule.Proto),
-			Target:  types.StringValue(rule.Target),
-			SrcIp:   types.StringValue(rule.SrcIp),
-			DstPort: types.StringValue(rule.DstPort),
-		})
-	}
-	input := firewallInput{
-		Policy: types.StringValue(currentFirewall.FirewallTables.Filter.Input.Policy),
-		Rules:  inputRules,
-	}
-
-	state.ID = types.StringValue("placeholder")
-	state.Extend = types.BoolValue(currentFirewall.Extend)
-	state.Input = &input
-
-	diags = resp.State.Set(ctx, state)
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
-}
-
 // Delete deletes the resource and removes the Terraform state on success.
 func (r *firewallResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	// Retrieve values from the state
@@ -322,25 +296,45 @@ func (r *firewallResource) Delete(ctx context.Context, req resource.DeleteReques
 
 	// Delete the resource
 	configType, identifier := state.typeAndIdentifier()
-	tflog.Info(ctx, fmt.Sprintf("Deleting firewall for %v %v", configType.String(), identifier))
+	tflog.Info(ctx, fmt.Sprintf("Deleting firewall for %v %v", configType, identifier))
 
-	deleteResponse, err := r.client.Firewall.Clear(configType, identifier)
+	content := config.Firewall{
+		Metadata: config.Metadata{
+			Reset:   true,
+			Version: "v1",
+		},
+	}
+
+	changeRequest, err := createChangeRequest(config.FirewallBundle, content, configType, identifier)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error deleting firewawll",
-			"could not delete firewawll, unexpected error: "+err.Error())
+			errorDeletingFirewall,
+			err.Error(),
+		)
 		return
 	}
 
-	_, err = r.client.Configuration.Commit("terraform: create firewall_resource")
+	change, err := r.client.CreateConfigurationChange(ctx, changeRequest)
 	if err != nil {
-		resp.Diagnostics.AddError("Could not commit deletion of firewawll",
-			"error creating a commit to delete the firewall resource: "+err.Error())
+		resp.Diagnostics.AddError(
+			errorDeletingFirewall,
+			"could not delete firewall, unexpected error: "+err.Error())
+		return
+	}
 
-		err = r.client.Configuration.DeleteUncommitted(deleteResponse.Sha)
+	_, err = r.client.CommitConfiguration(ctx, "terraform: create firewall_resource")
+	if err != nil {
+		resp.Diagnostics.AddError(
+			errorDeletingFirewall,
+			"error creating a commit to delete the firewall resource: "+err.Error(),
+		)
+
+		err = r.client.DeleteConfigurationChange(ctx, change.SHA)
 		if err != nil {
-			resp.Diagnostics.AddError("Could not revert uncommitted firewall changes",
-				"error deleting uncommitted firewall changes: "+err.Error())
+			resp.Diagnostics.AddError(
+				errorDeletingFirewall,
+				"error deleting uncommitted firewall changes: "+err.Error(),
+			)
 		}
 
 		return
@@ -351,7 +345,7 @@ func (r *firewallResource) ImportState(ctx context.Context, req resource.ImportS
 	configType, identifier, found := strings.Cut(req.ID, ":")
 	if !found || configType == "" || identifier == "" {
 		resp.Diagnostics.AddError(
-			"Unexpected Import Identifier",
+			errorImportingFirewall,
 			fmt.Sprintf("Expected import identifier with format: type:identifier. Got: %q", req.ID),
 		)
 		return
@@ -364,9 +358,73 @@ func (r *firewallResource) ImportState(ctx context.Context, req resource.ImportS
 		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("node"), identifier)...)
 	} else {
 		resp.Diagnostics.AddError(
-			"Unexpected Import Identifier",
+			errorImportingFirewall,
 			fmt.Sprintf("Import type must be either 'node' or 'tag'. Got: %q", configType),
 		)
 		return
 	}
+}
+
+func (r *firewallResource) writeFirewall(ctx context.Context, plan firewallResourceModel) diag.Diagnostics {
+	configType, id := plan.typeAndIdentifier()
+	extend := plan.Extend.ValueBool()
+
+	input := plan.Input
+	tables := map[config.FirewallTableName]config.FirewallTable{
+		config.Filter: {
+			config.Input: input.toQbeeFirewallChain(),
+		},
+	}
+
+	// Create the resource
+	tflog.Info(ctx, fmt.Sprintf("Setting firewall for %v %v", configType, id))
+
+	content := config.Firewall{
+		Metadata: config.Metadata{
+			Version: "v1",
+			Enabled: true,
+			Extend:  extend,
+		},
+		Tables: tables,
+	}
+
+	changeRequest, err := createChangeRequest(config.FirewallBundle, content, configType, id)
+	if err != nil {
+		return diag.Diagnostics{
+			diag.NewErrorDiagnostic(
+				errorWritingFirewall,
+				err.Error(),
+			),
+		}
+	}
+
+	change, err := r.client.CreateConfigurationChange(ctx, changeRequest)
+	if err != nil {
+		return diag.Diagnostics{
+			diag.NewErrorDiagnostic(
+				errorWritingFirewall,
+				err.Error(),
+			),
+		}
+	}
+
+	_, err = r.client.CommitConfiguration(ctx, "terraform: create firewall_resource")
+	if err != nil {
+		diags := diag.Diagnostics{}
+
+		err = fmt.Errorf("error creating a commit for the firewall: %w", err)
+		diags.AddError(errorWritingFirewall, err.Error())
+
+		err = r.client.DeleteConfigurationChange(ctx, change.SHA)
+		if err != nil {
+			diags.AddError(
+				errorWritingFirewall,
+				fmt.Sprintf("error deleting uncommitted firewall changes: %v", err),
+			)
+		}
+
+		return diags
+	}
+
+	return nil
 }

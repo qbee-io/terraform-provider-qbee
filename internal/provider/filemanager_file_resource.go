@@ -1,8 +1,8 @@
 package provider
 
 import (
+	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -11,8 +11,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/lesteenman/terraform-provider-qbee-lesteenman/internal/qbee"
+	"go.qbee.io/client"
+	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -22,12 +24,18 @@ var (
 	_ resource.ResourceWithImportState = &filemanagerFileResource{}
 )
 
+const (
+	errorReadingFilemanagerFile  = "Error reading filemanager_file"
+	errorCreatingFilemanagerFile = "Error creating filemanager_file"
+	errorDeletingFilemanagerFile = "Error deleting filemanager_file"
+)
+
 func NewFilemanagerFileResource() resource.Resource {
 	return &filemanagerFileResource{}
 }
 
 type filemanagerFileResource struct {
-	client *qbee.HttpClient
+	client *client.Client
 }
 
 // Metadata returns the resource type name.
@@ -41,7 +49,7 @@ func (r *filemanagerFileResource) Configure(_ context.Context, req resource.Conf
 		return
 	}
 
-	r.client = req.ProviderData.(*qbee.HttpClient)
+	r.client = req.ProviderData.(*client.Client)
 }
 
 // Schema defines the schema for the resource.
@@ -96,11 +104,23 @@ func (r *filemanagerFileResource) Create(ctx context.Context, req resource.Creat
 	fileName := filepath.Base(pathCleaned)
 	sourceFile := plan.SourceFile.ValueString()
 	tflog.Info(ctx, fmt.Sprintf("Uploading file %v to %v/%v", sourceFile, fileDirectory, fileName))
-	_, err := r.client.Files.Upload(sourceFile, fileDirectory, fileName)
+
+	f, err := os.Open(sourceFile)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error creating filemanager_file",
-			"could not create filemanager file, unexpected error: "+err.Error())
+			errorCreatingFilemanagerFile,
+			"could not read source file: "+err.Error(),
+		)
+		return
+	}
+
+	fileReader := bufio.NewReader(f)
+	err = r.client.UploadFile(ctx, fileDirectory, fileName, fileReader)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			errorCreatingFilemanagerFile,
+			"could not create filemanager file, unexpected error: "+err.Error(),
+		)
 		return
 	}
 
@@ -128,25 +148,25 @@ func (r *filemanagerFileResource) Read(ctx context.Context, req resource.ReadReq
 	filePath := state.Path.ValueString()
 
 	// Get the current file from Qbee
-	fileInfo, err := r.client.Files.GetMetadata(filePath)
-
-	// If the file is not found, we have drift, and it was deleted from qbee
-	if errors.Is(err, qbee.ErrFileNotFound) {
-		resp.State.RemoveResource(ctx)
-		return
-	}
-
-	// Any other error is unexpected
+	metadata, err := r.client.GetFileMetadata(ctx, filePath)
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error reading Qbee Filemanager data",
-			"Could not read Filemanager data from Qbee: "+err.Error())
+		// If the file is not found, we have drift, and it was deleted from qbee
+		if strings.HasSuffix(err.Error(), "404") {
+			resp.State.RemoveResource(ctx)
+		} else {
+			// Any other error is unexpected
+			resp.Diagnostics.AddError(
+				errorReadingFilemanagerFile,
+				"Could not read Filemanager data from Qbee: "+err.Error(),
+			)
+		}
+
 		return
 	}
 
 	// If the file was found, update the current state
 	state.ID = types.StringValue("placeholder")
-	state.FileSha256 = types.StringValue(fileInfo.Digest)
+	state.FileSha256 = types.StringValue(metadata.Digest)
 
 	resp.State.Set(ctx, state)
 }
@@ -172,11 +192,12 @@ func (r *filemanagerFileResource) Delete(ctx context.Context, req resource.Delet
 	// Delete file
 	filePath := state.Path.ValueString()
 	tflog.Info(ctx, fmt.Sprintf("Deleting filemanager path '%v'", filePath))
-	err := r.client.Files.Delete(filePath)
+	err := r.client.DeleteFile(ctx, filePath)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error deleting filemanager_file",
-			fmt.Sprintf("could not delete filemanager_file with path '%v', unexpected error: %v", filePath, err.Error()))
+			errorDeletingFilemanagerFile,
+			fmt.Sprintf("could not delete filemanager_file with path '%v', unexpected error: %v", filePath, err.Error()),
+		)
 		return
 	}
 }

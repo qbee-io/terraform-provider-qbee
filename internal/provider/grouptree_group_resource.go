@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/lesteenman/terraform-provider-qbee-lesteenman/internal/qbee"
+	"go.qbee.io/client"
 	"reflect"
 )
 
@@ -26,7 +26,7 @@ func NewGrouptreeGroupResource() resource.Resource {
 }
 
 type grouptreeGroupResource struct {
-	client *qbee.HttpClient
+	client *client.Client
 }
 
 // Metadata returns the resource type name.
@@ -40,7 +40,7 @@ func (r *grouptreeGroupResource) Configure(_ context.Context, req resource.Confi
 		return
 	}
 
-	r.client = req.ProviderData.(*qbee.HttpClient)
+	r.client = req.ProviderData.(*client.Client)
 }
 
 // Schema defines the schema for the resource.
@@ -86,18 +86,9 @@ func (r *grouptreeGroupResource) Create(ctx context.Context, req resource.Create
 		return
 	}
 
-	id := plan.ID.ValueString()
+	nodeID := plan.ID.ValueString()
 	ancestor := plan.Ancestor.ValueString()
 	title := plan.Title.ValueString()
-
-	// Create the resource
-	tflog.Info(ctx, fmt.Sprintf("Creating grouptree %v (title=%v), with ancestor %v", id, title, ancestor))
-	err := r.client.Grouptree.Create(id, ancestor, title)
-	if err != nil {
-		fmt.Printf("error: %v", err)
-		resp.Diagnostics.AddError("Error creating Grouptree resource", "could not create grouptree resource: "+err.Error())
-		return
-	}
 
 	var tags []string
 	if !plan.Tags.IsNull() {
@@ -109,7 +100,29 @@ func (r *grouptreeGroupResource) Create(ctx context.Context, req resource.Create
 		}
 	}
 
-	err = r.client.Grouptree.SetTags(id, tags)
+	// Create the resource
+	tflog.Info(ctx, fmt.Sprintf("Creating grouptree %v (title=%v), with ancestor %v", nodeID, title, ancestor))
+
+	err := r.client.GroupTreeUpdate(ctx, client.GroupTreeRequest{
+		Changes: []client.GroupTreeChange{
+			{
+				Action: client.TreeActionCreate,
+				Data: client.GroupTreeChangeData{
+					ParentID: ancestor,
+					NodeID:   nodeID,
+					Title:    title,
+					Type:     client.NodeTypeGroup,
+				},
+			},
+		},
+	})
+	if err != nil {
+		fmt.Printf("error: %v", err)
+		resp.Diagnostics.AddError("Error creating Grouptree resource", "could not create grouptree resource: "+err.Error())
+		return
+	}
+
+	err = r.client.GroupTreeSetTags(ctx, nodeID, tags)
 	if err != nil {
 		fmt.Printf("error while settings tags to %+v: %v", tags, err)
 		resp.Diagnostics.AddError("Error creating Grouptree source", "could not set tags on resource: "+err.Error())
@@ -138,24 +151,24 @@ func (r *grouptreeGroupResource) Read(ctx context.Context, req resource.ReadRequ
 		return
 	}
 
-	id := state.ID.ValueString()
+	nodeID := state.ID.ValueString()
 
 	// Read the real status
-	readResponse, err := r.client.Grouptree.Get(id)
+	nodeInfo, err := r.client.GroupTreeGetNode(ctx, nodeID)
 	if err != nil {
 		resp.Diagnostics.AddError("Error reading Grouptree resource", "could not read grouptree resource: "+err.Error())
 		return
 	}
 
-	state.Title = types.StringValue(readResponse.Title)
+	state.Title = types.StringValue(nodeInfo.Title)
 
-	state.Tags, diags = types.ListValueFrom(ctx, types.StringType, readResponse.Tags)
+	state.Tags, diags = types.ListValueFrom(ctx, types.StringType, nodeInfo.Tags)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	ancestors := readResponse.Ancestors
+	ancestors := nodeInfo.Ancestors
 	lastAncestor := ancestors[len(ancestors)-2]
 	state.Ancestor = types.StringValue(lastAncestor)
 
@@ -180,7 +193,7 @@ func (r *grouptreeGroupResource) Update(ctx context.Context, req resource.Update
 		return
 	}
 
-	id := state.ID.ValueString()
+	nodeID := state.ID.ValueString()
 
 	// Check if we should move the group
 	oldAncestor := state.Ancestor.ValueString()
@@ -196,8 +209,21 @@ func (r *grouptreeGroupResource) Update(ctx context.Context, req resource.Update
 	oldTitle := state.Title.ValueString()
 	currentTitle := plan.Title.ValueString()
 	if oldTitle != currentTitle {
-		tflog.Info(ctx, fmt.Sprintf("Renaming grouptree %v from '%v' to '%v'", id, oldTitle, currentTitle))
-		err := r.client.Grouptree.Rename(id, currentAncestor, currentTitle)
+		tflog.Info(ctx, fmt.Sprintf("Renaming grouptree %v from '%v' to '%v'", nodeID, oldTitle, currentTitle))
+
+		err := r.client.GroupTreeUpdate(ctx, client.GroupTreeRequest{
+			Changes: []client.GroupTreeChange{
+				{
+					Action: client.TreeActionRename,
+					Data: client.GroupTreeChangeData{
+						Type:     client.NodeTypeGroup,
+						NodeID:   nodeID,
+						ParentID: currentAncestor,
+						Title:    currentTitle,
+					},
+				},
+			},
+		})
 		if err != nil {
 			tflog.Error(ctx, fmt.Sprintf("Error response while renaming grouptree_group: %v", err))
 			resp.Diagnostics.AddError("Could not rename group", "Error while renaming grouptree_group resource: "+err.Error())
@@ -219,7 +245,7 @@ func (r *grouptreeGroupResource) Update(ctx context.Context, req resource.Update
 			}
 		}
 
-		err := r.client.Grouptree.SetTags(id, tags)
+		err := r.client.GroupTreeSetTags(ctx, nodeID, tags)
 		if err != nil {
 			fmt.Printf("error while settings tags to %+v: %v", tags, err)
 			resp.Diagnostics.AddError("Error creating Grouptree source", "could not set tags on resource: "+err.Error())
@@ -241,11 +267,23 @@ func (r *grouptreeGroupResource) Delete(ctx context.Context, req resource.Delete
 	}
 
 	// Delete the resource
-	id := state.ID.ValueString()
-	ancestor := state.Ancestor.ValueString()
+	nodeID := state.ID.ValueString()
+	parentID := state.Ancestor.ValueString()
 
-	tflog.Info(ctx, fmt.Sprintf("Deleting grouptree node %v with ancestor %v", id, ancestor))
-	err := r.client.Grouptree.Delete(id, ancestor)
+	tflog.Info(ctx, fmt.Sprintf("Deleting grouptree node %v with parentID %v", nodeID, parentID))
+
+	err := r.client.GroupTreeUpdate(ctx, client.GroupTreeRequest{
+		Changes: []client.GroupTreeChange{
+			{
+				Action: client.TreeActionDelete,
+				Data: client.GroupTreeChangeData{
+					Type:     client.NodeTypeGroup,
+					NodeID:   nodeID,
+					ParentID: parentID,
+				},
+			},
+		},
+	})
 	if err != nil {
 		resp.Diagnostics.AddError("Error deleting Grouptree resource", "could not delete grouptree resource: "+err.Error())
 	}
