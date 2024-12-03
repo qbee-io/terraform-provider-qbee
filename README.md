@@ -1,5 +1,9 @@
 # Terraform Provider Qbee (Terraform Plugin Framework)
 
+> [!IMPORTANT]
+> Alpha release, don't use in production.
+> Code is contributed by an external entity and is currently undergoing review and testing - breaking changes might be introduced.
+
 This Terraform provider implements (parts of) the qbee API, in order to facilitate configuration of
 a qbee account using Terraform.
 
@@ -65,9 +69,6 @@ Fill this in for each provider
 ## Developing the Provider
 
 If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (see [Requirements](#requirements) above).
-
-Because this provider is hosted on a private bitbucket repository, we need to configure git to fetch it using our configured
-SSH credentials: `git config --global url."git@bitbucket.org:booqsoftware".insteadOf "https://bitbucket.org/booqsoftware"`
 
 To compile the provider, run `go install`. This will build the provider and put the provider binary in the `$GOPATH/bin` directory.
 
