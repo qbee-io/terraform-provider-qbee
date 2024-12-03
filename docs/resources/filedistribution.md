@@ -92,6 +92,7 @@ Required:
 Optional:
 
 - `command` (String) A command that will be run on the device after this fileset is distributed. Example: `/bin/true`.
+- `label` (String) An optional label for the fileset.
 - `parameters` (Attributes List) (see [below for nested schema](#nestedatt--files--parameters))
 - `pre_condition` (String) A command that must successfully execute on the device (return a non-zero exit code) before this fileset can be distributed. Example: `/bin/true`.
 

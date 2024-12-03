@@ -18,6 +18,7 @@ resource "qbee_filedistribution" "test" {
   extend = true
   files = [
     {
+	  label = "acc-test file distribution"
       templates = [
         {
           source = "/acctest/source"
@@ -34,6 +35,7 @@ resource "qbee_filedistribution" "test" {
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "tag", "terraform:acctest:filedistribution"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "extend", "true"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "files.#", "1"),
+					resource.TestCheckResourceAttr("qbee_filedistribution.test", "files.0.label", "acc-test file distribution"),
 					resource.TestCheckNoResourceAttr("qbee_filedistribution.test", "files.0.command"),
 					resource.TestCheckNoResourceAttr("qbee_filedistribution.test", "files.0.pre_condition"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "files.0.templates.#", "1"),
@@ -51,6 +53,7 @@ resource "qbee_filedistribution" "test" {
   extend = true
   files = [
     {
+	  label = "acc-test file distribution - updated"
       templates = [
         {
           source = "/acctest/source2"
@@ -68,6 +71,7 @@ resource "qbee_filedistribution" "test" {
 					resource.TestCheckNoResourceAttr("qbee_filedistribution.test", "node"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "extend", "true"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "files.#", "1"),
+					resource.TestCheckResourceAttr("qbee_filedistribution.test", "files.0.label", "acc-test file distribution - updated"),
 					resource.TestCheckNoResourceAttr("qbee_filedistribution.test", "files.0.command"),
 					resource.TestCheckNoResourceAttr("qbee_filedistribution.test", "files.0.pre_condition"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "files.0.templates.#", "1"),
@@ -102,6 +106,7 @@ resource "qbee_filedistribution" "test" {
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "node", "integrationtests"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "extend", "true"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "files.#", "1"),
+					resource.TestCheckNoResourceAttr("qbee_filedistribution.test", "files.0.label"),
 					resource.TestCheckNoResourceAttr("qbee_filedistribution.test", "files.0.command"),
 					resource.TestCheckNoResourceAttr("qbee_filedistribution.test", "files.0.pre_condition"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "files.0.templates.#", "1"),

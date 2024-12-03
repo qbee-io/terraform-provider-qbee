@@ -82,6 +82,10 @@ func (r *filedistributionResource) Schema(_ context.Context, _ resource.SchemaRe
 				Description: "The filesets that must be distributed",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
+						"label": schema.StringAttribute{
+							Optional:    true,
+							Description: "An optional label for the fileset.",
+						},
 						"templates": schema.ListNestedAttribute{
 							Required: true,
 							NestedObject: schema.NestedAttributeObject{
@@ -156,6 +160,7 @@ func (m filedistributionResourceModel) typeAndIdentifier() (config.EntityType, s
 }
 
 type file struct {
+	Label        types.String `tfsdk:"label"`
 	Command      types.String `tfsdk:"command"`
 	PreCondition types.String `tfsdk:"pre_condition"`
 	Templates    []template   `tfsdk:"templates"`
@@ -181,6 +186,7 @@ func (f file) toQbeeFileSet() config.FileSet {
 	}
 
 	return config.FileSet{
+		Label:              f.Label.ValueString(),
 		AfterCommand:       f.Command.ValueString(),
 		PreCondition:       f.PreCondition.ValueString(),
 		Files:              files,
@@ -362,6 +368,13 @@ func (r *filedistributionResource) Read(ctx context.Context, req resource.ReadRe
 			})
 		}
 
+		var label types.String
+		if f.Label == "" {
+			label = types.StringNull()
+		} else {
+			label = types.StringValue(f.Label)
+		}
+
 		var command types.String
 		if f.AfterCommand == "" {
 			command = types.StringNull()
@@ -377,6 +390,7 @@ func (r *filedistributionResource) Read(ctx context.Context, req resource.ReadRe
 		}
 
 		files = append(files, file{
+			Label:        label,
 			Command:      command,
 			PreCondition: precondition,
 			Templates:    templates,
