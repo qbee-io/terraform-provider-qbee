@@ -1,7 +1,6 @@
 package provider
 
 import (
-	"bitbucket.org/booqsoftware/terraform-provider-qbee/internal/qbee"
 	"context"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
@@ -13,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"github.com/qbee-io/terraform-provider-qbee/internal/qbee"
 	"strings"
 )
 

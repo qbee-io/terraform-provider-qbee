@@ -1,4 +1,4 @@
-module bitbucket.org/booqsoftware/terraform-provider-qbee
+module github.com/qbee-io/terraform-provider-qbee
 
 go 1.20
 

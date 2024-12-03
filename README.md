@@ -30,7 +30,7 @@ terraform project where you want to use it:
 # From the root of your terraform project (where your *.tf files are stored):
 GOOS=$(go env GOOS)
 GOARCH=$(go env GOARCH)
-TARGET_DIR=".terraform/plugins/terraform.booqsoftware.com/qbee/qbee/$VERSION/${GOOS}_${GOARCH}"
+TARGET_DIR=".terraform/plugins/github.com/qbee-io/terraform-provider-qbee/$VERSION/${GOOS}_${GOARCH}"
 
 mkdir -p "$TARGET_DIR"
 cp <dist> "$TARGET_DIR"
@@ -69,9 +69,6 @@ Fill this in for each provider
 ## Developing the Provider
 
 If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (see [Requirements](#requirements) above).
-
-Because this provider is hosted on a private bitbucket repository, we need to configure git to fetch it using our configured
-SSH credentials: `git config --global url."git@bitbucket.org:booqsoftware".insteadOf "https://bitbucket.org/booqsoftware"`
 
 To compile the provider, run `go install`. This will build the provider and put the provider binary in the `$GOPATH/bin` directory.
 
