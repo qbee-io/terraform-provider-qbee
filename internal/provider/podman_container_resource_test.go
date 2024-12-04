@@ -13,9 +13,10 @@ func TestAccPodmanContainerResource(t *testing.T) {
 			// Create and Read testing
 			{
 				Config: providerConfig + `
-resource "qbee_podman_container" "test" {
-  tag = "terraform:acctest:podman_container"
-  items = [
+resource "qbee_podman_containers" "test" {
+  tag = "terraform:acctest:dockercontainer"
+  extend = true
+  containers = [
     {
       name = "container-a"
       image = "debian:stable"
@@ -24,19 +25,21 @@ resource "qbee_podman_container" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "tag", "terraform:acctest:podman_container"),
-					resource.TestCheckNoResourceAttr("qbee_podman_container.test", "node"),
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "items.#", "1"),
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "items.0.name", "container-a"),
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "items.0.image", "debian:stable"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "tag", "terraform:acctest:dockercontainer"),
+					resource.TestCheckNoResourceAttr("qbee_podman_containers.test", "node"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "extend", "true"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "containers.#", "1"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "containers.0.name", "container-a"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "containers.0.image", "debian:stable"),
 				),
 			},
 			// Update to a different template
 			{
 				Config: providerConfig + `
-resource "qbee_podman_container" "test" {
-  tag = "terraform:acctest:podman_container"
-  items = [
+resource "qbee_podman_containers" "test" {
+  tag = "terraform:acctest:dockercontainer"
+  extend = false
+  containers = [
     {
       name = "container-b"
       image = "debian:latest"
@@ -56,27 +59,37 @@ resource "qbee_podman_container" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "tag", "terraform:acctest:podman_container"),
-					resource.TestCheckNoResourceAttr("qbee_podman_container.test", "node"),
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "items.#", "1"),
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "items.0.name", "container-b"),
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "items.0.image", "debian:latest"),
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "items.0.podman_args", "-v /path/to/data-volume:/data --hostname my-hostname"),
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "items.0.env_file", "/tmp/env"),
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "items.0.command", "echo"),
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "items.0.pre_condition", "true"),
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "registry_auths.#", "1"),
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "registry_auths.0.server", "registry.example.com"),
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "registry_auths.0.username", "user"),
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "registry_auths.0.password", "password"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "tag", "terraform:acctest:dockercontainer"),
+					resource.TestCheckNoResourceAttr("qbee_podman_containers.test", "node"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "extend", "false"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "containers.#", "1"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "containers.0.name", "container-b"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "containers.0.image", "debian:latest"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "containers.0.podman_args", "-v /path/to/data-volume:/data --hostname my-hostname"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "containers.0.env_file", "/tmp/env"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "containers.0.command", "echo"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "containers.0.pre_condition", "true"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "registry_auths.#", "1"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "registry_auths.0.server", "registry.example.com"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "registry_auths.0.username", "user"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "registry_auths.0.password", "password"),
 				),
+			},
+			// Import tag
+			{
+				ResourceName:                         "qbee_podman_containers.test",
+				ImportState:                          true,
+				ImportStateId:                        "tag:terraform:acctest:dockercontainer",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "tag",
 			},
 			// Update to be for a node
 			{
 				Config: providerConfig + `
-resource "qbee_podman_container" "test" {
+resource "qbee_podman_containers" "test" {
   node = "integrationtests"
-  items = [
+  extend = true
+  containers = [
     {
       name = "container-a"
       image = "debian:stable"
@@ -85,16 +98,17 @@ resource "qbee_podman_container" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckNoResourceAttr("qbee_podman_container.test", "tag"),
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "node", "integrationtests"),
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "items.#", "1"),
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "items.0.name", "container-a"),
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "items.0.image", "debian:stable"),
+					resource.TestCheckNoResourceAttr("qbee_podman_containers.test", "tag"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "node", "integrationtests"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "extend", "true"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "containers.#", "1"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "containers.0.name", "container-a"),
+					resource.TestCheckResourceAttr("qbee_podman_containers.test", "containers.0.image", "debian:stable"),
 				),
 			},
-			// Import testing
+			// Import node
 			{
-				ResourceName:                         "qbee_podman_container.test",
+				ResourceName:                         "qbee_podman_containers.test",
 				ImportState:                          true,
 				ImportStateId:                        "node:integrationtests",
 				ImportStateVerify:                    true,

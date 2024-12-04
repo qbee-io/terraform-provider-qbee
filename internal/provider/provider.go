@@ -132,6 +132,7 @@ func (p *QbeeProvider) Resources(ctx context.Context) []func() resource.Resource
 		NewConnectivityWatchdogResource,
 		NewParametersResource,
 		NewDockerContainersResource,
+		NewPodmanContainersResource,
 	}
 }
 
