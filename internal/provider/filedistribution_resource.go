@@ -79,7 +79,7 @@ func (r *filedistributionResource) Schema(_ context.Context, _ resource.SchemaRe
 			},
 			"files": schema.ListNestedAttribute{
 				Required:    true,
-				Description: "The filesets that must be distributed",
+				Description: "The filesets to distribute.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"label": schema.StringAttribute{
