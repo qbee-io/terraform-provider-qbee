@@ -78,10 +78,6 @@ resource "qbee_filedistribution" "example_node" {
 - `node` (String) The node for which to set the configuration. Either tag or node is required.
 - `tag` (String) The tag for which to set the configuration. Either tag or node is required.
 
-### Read-Only
-
-- `id` (String) Placeholder ID value
-
 <a id="nestedatt--files"></a>
 ### Nested Schema for `files`
 

@@ -19,7 +19,6 @@ resource "qbee_filemanager_directory" "test" {
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "path", "/acctest/filemanager_directory/testdir"),
-					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "id", "placeholder"),
 				),
 			},
 			// Update and read testing
@@ -31,15 +30,15 @@ resource "qbee_filemanager_directory" "test" {
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "path", "/acctest/filemanager_directory/testdir-2"),
-					resource.TestCheckResourceAttr("qbee_filemanager_directory.test", "id", "placeholder"),
 				),
 			},
 			// Import testing
 			{
-				ResourceName:      "qbee_filemanager_directory.test",
-				ImportState:       true,
-				ImportStateId:     "/acctest/filemanager_directory/testdir-2",
-				ImportStateVerify: true,
+				ResourceName:                         "qbee_filemanager_directory.test",
+				ImportState:                          true,
+				ImportStateId:                        "/acctest/filemanager_directory/testdir-2",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "path",
 			},
 		},
 	})

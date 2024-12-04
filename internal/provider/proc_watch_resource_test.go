@@ -25,7 +25,6 @@ resource "qbee_proc_watch" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_proc_watch.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_proc_watch.test", "tag", "terraform:acctest:proc_watch"),
 					resource.TestCheckNoResourceAttr("qbee_proc_watch.test", "node"),
 					resource.TestCheckResourceAttr("qbee_proc_watch.test", "processes.#", "1"),
@@ -54,7 +53,6 @@ resource "qbee_proc_watch" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_proc_watch.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_proc_watch.test", "tag", "terraform:acctest:proc_watch"),
 					resource.TestCheckNoResourceAttr("qbee_proc_watch.test", "node"),
 					resource.TestCheckResourceAttr("qbee_proc_watch.test", "processes.#", "2"),
@@ -68,10 +66,11 @@ resource "qbee_proc_watch" "test" {
 			},
 			// Import tag
 			{
-				ResourceName:      "qbee_proc_watch.test",
-				ImportState:       true,
-				ImportStateId:     "tag:terraform:acctest:proc_watch",
-				ImportStateVerify: true,
+				ResourceName:                         "qbee_proc_watch.test",
+				ImportState:                          true,
+				ImportStateId:                        "tag:terraform:acctest:proc_watch",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "tag",
 			},
 			// Update to be for a node
 			{
@@ -93,7 +92,6 @@ resource "qbee_proc_watch" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_proc_watch.test", "id", "placeholder"),
 					resource.TestCheckNoResourceAttr("qbee_proc_watch.test", "tag"),
 					resource.TestCheckResourceAttr("qbee_proc_watch.test", "node", "integrationtests"),
 					resource.TestCheckResourceAttr("qbee_proc_watch.test", "processes.#", "2"),
@@ -107,10 +105,11 @@ resource "qbee_proc_watch" "test" {
 			},
 			// Import testing
 			{
-				ResourceName:      "qbee_proc_watch.test",
-				ImportState:       true,
-				ImportStateId:     "node:integrationtests",
-				ImportStateVerify: true,
+				ResourceName:                         "qbee_proc_watch.test",
+				ImportState:                          true,
+				ImportStateId:                        "node:integrationtests",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "node",
 			},
 		},
 	})

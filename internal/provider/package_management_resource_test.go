@@ -19,7 +19,6 @@ resource "qbee_package_management" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_package_management.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_package_management.test", "tag", "terraform:acctest:package_management"),
 					resource.TestCheckNoResourceAttr("qbee_package_management.test", "node"),
 					resource.TestCheckResourceAttr("qbee_package_management.test", "full_upgrade", "true"),
@@ -44,7 +43,6 @@ resource "qbee_package_management" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_package_management.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_package_management.test", "tag", "terraform:acctest:package_management"),
 					resource.TestCheckNoResourceAttr("qbee_package_management.test", "node"),
 					resource.TestCheckResourceAttr("qbee_package_management.test", "pre_condition", "true"),
@@ -56,10 +54,11 @@ resource "qbee_package_management" "test" {
 			},
 			// Import tag
 			{
-				ResourceName:      "qbee_package_management.test",
-				ImportState:       true,
-				ImportStateId:     "tag:terraform:acctest:package_management",
-				ImportStateVerify: true,
+				ResourceName:                         "qbee_package_management.test",
+				ImportState:                          true,
+				ImportStateId:                        "tag:terraform:acctest:package_management",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "tag",
 			},
 			// Update to be for a node
 			{
@@ -76,7 +75,6 @@ resource "qbee_package_management" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_package_management.test", "id", "placeholder"),
 					resource.TestCheckNoResourceAttr("qbee_package_management.test", "tag"),
 					resource.TestCheckResourceAttr("qbee_package_management.test", "node", "integrationtests"),
 					resource.TestCheckResourceAttr("qbee_package_management.test", "reboot_mode", "always"),
@@ -87,10 +85,11 @@ resource "qbee_package_management" "test" {
 			},
 			// Import testing
 			{
-				ResourceName:      "qbee_package_management.test",
-				ImportState:       true,
-				ImportStateId:     "node:integrationtests",
-				ImportStateVerify: true,
+				ResourceName:                         "qbee_package_management.test",
+				ImportState:                          true,
+				ImportStateId:                        "node:integrationtests",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "node",
 			},
 		},
 	})

@@ -27,7 +27,6 @@ resource "qbee_sshkeys" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_sshkeys.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_sshkeys.test", "tag", "terraform:acctest:sshkeys"),
 					resource.TestCheckNoResourceAttr("qbee_sshkeys.test", "node"),
 					resource.TestCheckResourceAttr("qbee_sshkeys.test", "users.#", "1"),
@@ -55,7 +54,6 @@ resource "qbee_sshkeys" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_sshkeys.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_sshkeys.test", "tag", "terraform:acctest:sshkeys"),
 					resource.TestCheckNoResourceAttr("qbee_sshkeys.test", "node"),
 					resource.TestCheckResourceAttr("qbee_sshkeys.test", "users.#", "2"),
@@ -68,10 +66,11 @@ resource "qbee_sshkeys" "test" {
 			},
 			// Import from tag
 			{
-				ResourceName:      "qbee_sshkeys.test",
-				ImportState:       true,
-				ImportStateId:     "tag:terraform:acctest:sshkeys",
-				ImportStateVerify: true,
+				ResourceName:                         "qbee_sshkeys.test",
+				ImportState:                          true,
+				ImportStateId:                        "tag:terraform:acctest:sshkeys",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "tag",
 			},
 			// Update to be for a node
 			{
@@ -91,7 +90,6 @@ resource "qbee_sshkeys" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_sshkeys.test", "id", "placeholder"),
 					resource.TestCheckNoResourceAttr("qbee_sshkeys.test", "tag"),
 					resource.TestCheckResourceAttr("qbee_sshkeys.test", "node", "integrationtests"),
 					resource.TestCheckResourceAttr("qbee_sshkeys.test", "users.#", "2"),
@@ -104,10 +102,11 @@ resource "qbee_sshkeys" "test" {
 			},
 			// Import from node
 			{
-				ResourceName:      "qbee_sshkeys.test",
-				ImportState:       true,
-				ImportStateId:     "node:integrationtests",
-				ImportStateVerify: true,
+				ResourceName:                         "qbee_sshkeys.test",
+				ImportState:                          true,
+				ImportStateId:                        "node:integrationtests",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "node",
 			},
 		},
 	})

@@ -24,7 +24,6 @@ resource "qbee_podman_container" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_podman_container.test", "tag", "terraform:acctest:podman_container"),
 					resource.TestCheckNoResourceAttr("qbee_podman_container.test", "node"),
 					resource.TestCheckResourceAttr("qbee_podman_container.test", "items.#", "1"),
@@ -57,7 +56,6 @@ resource "qbee_podman_container" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_podman_container.test", "tag", "terraform:acctest:podman_container"),
 					resource.TestCheckNoResourceAttr("qbee_podman_container.test", "node"),
 					resource.TestCheckResourceAttr("qbee_podman_container.test", "items.#", "1"),
@@ -87,7 +85,6 @@ resource "qbee_podman_container" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_podman_container.test", "id", "placeholder"),
 					resource.TestCheckNoResourceAttr("qbee_podman_container.test", "tag"),
 					resource.TestCheckResourceAttr("qbee_podman_container.test", "node", "integrationtests"),
 					resource.TestCheckResourceAttr("qbee_podman_container.test", "items.#", "1"),
@@ -97,10 +94,11 @@ resource "qbee_podman_container" "test" {
 			},
 			// Import testing
 			{
-				ResourceName:      "qbee_podman_container.test",
-				ImportState:       true,
-				ImportStateId:     "node:integrationtests",
-				ImportStateVerify: true,
+				ResourceName:                         "qbee_podman_container.test",
+				ImportState:                          true,
+				ImportStateId:                        "node:integrationtests",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "node",
 			},
 		},
 	})

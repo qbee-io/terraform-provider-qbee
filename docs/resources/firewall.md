@@ -56,10 +56,6 @@ resource "qbee_filemanager_file" "example" {
 - `node` (String) The node for which to set the configuration. Either tag or node is required.
 - `tag` (String) The tag for which to set the configuration. Either tag or node is required.
 
-### Read-Only
-
-- `id` (String) Placeholder ID value
-
 <a id="nestedatt--input"></a>
 ### Nested Schema for `input`
 

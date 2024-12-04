@@ -56,10 +56,6 @@ func (r *filemanagerFileResource) Configure(_ context.Context, req resource.Conf
 func (r *filemanagerFileResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:    true,
-				Description: "Placeholder ID value",
-			},
 			"path": schema.StringAttribute{
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
@@ -81,7 +77,6 @@ func (r *filemanagerFileResource) Schema(_ context.Context, _ resource.SchemaReq
 }
 
 type filemanagerFileResourceModel struct {
-	ID         types.String `tfsdk:"id"`
 	Path       types.String `tfsdk:"path"`
 	SourceFile types.String `tfsdk:"sourcefile"`
 	FileSha256 types.String `tfsdk:"file_sha256"`
@@ -125,8 +120,6 @@ func (r *filemanagerFileResource) Create(ctx context.Context, req resource.Creat
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ID = types.StringValue("placeholder")
-
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -165,7 +158,6 @@ func (r *filemanagerFileResource) Read(ctx context.Context, req resource.ReadReq
 	}
 
 	// If the file was found, update the current state
-	state.ID = types.StringValue("placeholder")
 	state.FileSha256 = types.StringValue(metadata.Digest)
 
 	resp.State.Set(ctx, state)

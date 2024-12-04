@@ -60,10 +60,6 @@ func (r *firewallResource) Configure(_ context.Context, req resource.ConfigureRe
 func (r *firewallResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:    true,
-				Description: "Placeholder ID value",
-			},
 			"tag": schema.StringAttribute{
 				Optional:      true,
 				Description:   "The tag for which to set the configuration. Either tag or node is required.",
@@ -137,7 +133,6 @@ func (r *firewallResource) ConfigValidators(ctx context.Context) []resource.Conf
 type firewallResourceModel struct {
 	Node   types.String   `tfsdk:"node"`
 	Tag    types.String   `tfsdk:"tag"`
-	ID     types.String   `tfsdk:"id"`
 	Extend types.Bool     `tfsdk:"extend"`
 	Input  *firewallInput `tfsdk:"input"`
 }
@@ -191,8 +186,6 @@ func (r *firewallResource) Create(ctx context.Context, req resource.CreateReques
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ID = types.StringValue("placeholder")
-
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -246,7 +239,6 @@ func (r *firewallResource) Read(ctx context.Context, req resource.ReadRequest, r
 		Rules:  inputRules,
 	}
 
-	state.ID = types.StringValue("placeholder")
 	state.Extend = types.BoolValue(currentFirewall.Extend)
 	state.Input = &input
 
@@ -274,8 +266,6 @@ func (r *firewallResource) Update(ctx context.Context, req resource.UpdateReques
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ID = types.StringValue("placeholder")
-
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -366,7 +356,7 @@ func (r *firewallResource) ImportState(ctx context.Context, req resource.ImportS
 }
 
 func (r *firewallResource) writeFirewall(ctx context.Context, plan firewallResourceModel) diag.Diagnostics {
-	configType, id := plan.typeAndIdentifier()
+	configType, identifier := plan.typeAndIdentifier()
 	extend := plan.Extend.ValueBool()
 
 	input := plan.Input
@@ -377,7 +367,7 @@ func (r *firewallResource) writeFirewall(ctx context.Context, plan firewallResou
 	}
 
 	// Create the resource
-	tflog.Info(ctx, fmt.Sprintf("Setting firewall for %v %v", configType, id))
+	tflog.Info(ctx, fmt.Sprintf("Setting firewall for %v %v", configType, identifier))
 
 	content := config.Firewall{
 		Metadata: config.Metadata{
@@ -388,7 +378,7 @@ func (r *firewallResource) writeFirewall(ctx context.Context, plan firewallResou
 		Tables: tables,
 	}
 
-	changeRequest, err := createChangeRequest(config.FirewallBundle, content, configType, id)
+	changeRequest, err := createChangeRequest(config.FirewallBundle, content, configType, identifier)
 	if err != nil {
 		return diag.Diagnostics{
 			diag.NewErrorDiagnostic(

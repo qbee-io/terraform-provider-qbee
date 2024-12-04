@@ -24,7 +24,6 @@ resource "qbee_users" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_users.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_users.test", "tag", "terraform:acctest:users"),
 					resource.TestCheckNoResourceAttr("qbee_users.test", "node"),
 					resource.TestCheckResourceAttr("qbee_users.test", "items.#", "1"),
@@ -50,7 +49,6 @@ resource "qbee_users" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_users.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_users.test", "tag", "terraform:acctest:users"),
 					resource.TestCheckNoResourceAttr("qbee_users.test", "node"),
 					resource.TestCheckResourceAttr("qbee_users.test", "items.#", "2"),
@@ -62,10 +60,11 @@ resource "qbee_users" "test" {
 			},
 			// Import from tag
 			{
-				ResourceName:      "qbee_users.test",
-				ImportState:       true,
-				ImportStateId:     "tag:terraform:acctest:users",
-				ImportStateVerify: true,
+				ResourceName:                         "qbee_users.test",
+				ImportState:                          true,
+				ImportStateId:                        "tag:terraform:acctest:users",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "tag",
 			},
 			// Update to be for a node
 			{
@@ -85,7 +84,6 @@ resource "qbee_users" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_users.test", "id", "placeholder"),
 					resource.TestCheckNoResourceAttr("qbee_users.test", "tag"),
 					resource.TestCheckResourceAttr("qbee_users.test", "node", "integrationtests"),
 					resource.TestCheckResourceAttr("qbee_users.test", "items.#", "2"),
@@ -97,10 +95,11 @@ resource "qbee_users" "test" {
 			},
 			// Import from node
 			{
-				ResourceName:      "qbee_users.test",
-				ImportState:       true,
-				ImportStateId:     "node:integrationtests",
-				ImportStateVerify: true,
+				ResourceName:                         "qbee_users.test",
+				ImportState:                          true,
+				ImportStateId:                        "node:integrationtests",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "node",
 			},
 		},
 	})

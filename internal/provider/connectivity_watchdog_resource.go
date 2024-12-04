@@ -46,7 +46,6 @@ type connectivityWatchdogResource struct {
 type connectivityWatchdogResourceModel struct {
 	Node      types.String `tfsdk:"node"`
 	Tag       types.String `tfsdk:"tag"`
-	ID        types.String `tfsdk:"id"`
 	Extend    types.Bool   `tfsdk:"extend"`
 	Threshold types.Int64  `tfsdk:"threshold"`
 }
@@ -73,10 +72,6 @@ func (r *connectivityWatchdogResource) Configure(_ context.Context, req resource
 func (r *connectivityWatchdogResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:    true,
-				Description: "Placeholder ID value",
-			},
 			"tag": schema.StringAttribute{
 				Optional:      true,
 				Description:   "The tag for which to set the configuration. Either tag or node is required.",
@@ -126,8 +121,6 @@ func (r *connectivityWatchdogResource) Create(ctx context.Context, req resource.
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ID = types.StringValue("placeholder")
-
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -153,8 +146,6 @@ func (r *connectivityWatchdogResource) Update(ctx context.Context, req resource.
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ID = types.StringValue("placeholder")
-
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -191,7 +182,6 @@ func (r *connectivityWatchdogResource) Read(ctx context.Context, req resource.Re
 		return
 	}
 
-	state.ID = types.StringValue("placeholder")
 	state.Extend = types.BoolValue(currentConnectivityWatchdog.Extend)
 
 	threshold, err := strconv.ParseInt(currentConnectivityWatchdog.Threshold, 10, 64)

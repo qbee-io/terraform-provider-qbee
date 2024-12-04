@@ -18,7 +18,6 @@ resource "qbee_rauc" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_rauc.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_rauc.test", "tag", "terraform:acctest:rauc"),
 					resource.TestCheckNoResourceAttr("qbee_rauc.test", "node"),
 				),
@@ -31,17 +30,17 @@ resource "qbee_rauc" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_rauc.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_rauc.test", "tag", "terraform:acctest:rauc"),
 					resource.TestCheckNoResourceAttr("qbee_rauc.test", "node"),
 				),
 			},
 			// Import tag
 			{
-				ResourceName:      "qbee_rauc.test",
-				ImportState:       true,
-				ImportStateId:     "tag:terraform:acctest:rauc",
-				ImportStateVerify: true,
+				ResourceName:                         "qbee_rauc.test",
+				ImportState:                          true,
+				ImportStateId:                        "tag:terraform:acctest:rauc",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "tag",
 			},
 			// Update to be for a node
 			{
@@ -51,17 +50,17 @@ resource "qbee_rauc" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_rauc.test", "id", "placeholder"),
 					resource.TestCheckNoResourceAttr("qbee_rauc.test", "tag"),
 					resource.TestCheckResourceAttr("qbee_rauc.test", "node", "integrationtests"),
 				),
 			},
 			// Import testing
 			{
-				ResourceName:      "qbee_rauc.test",
-				ImportState:       true,
-				ImportStateId:     "node:integrationtests",
-				ImportStateVerify: true,
+				ResourceName:                         "qbee_rauc.test",
+				ImportState:                          true,
+				ImportStateId:                        "node:integrationtests",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "node",
 			},
 		},
 	})

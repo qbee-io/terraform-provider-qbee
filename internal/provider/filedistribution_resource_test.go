@@ -30,7 +30,6 @@ resource "qbee_filedistribution" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_filedistribution.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "tag", "terraform:acctest:filedistribution"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "extend", "true"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "files.#", "1"),
@@ -73,7 +72,6 @@ resource "qbee_filedistribution" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_filedistribution.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "tag", "terraform:acctest:filedistribution"),
 					resource.TestCheckNoResourceAttr("qbee_filedistribution.test", "node"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "extend", "true"),
@@ -92,10 +90,11 @@ resource "qbee_filedistribution" "test" {
 			},
 			// Import from tag
 			{
-				ResourceName:      "qbee_filedistribution.test",
-				ImportState:       true,
-				ImportStateId:     "tag:terraform:acctest:filedistribution",
-				ImportStateVerify: true,
+				ResourceName:                         "qbee_filedistribution.test",
+				ImportState:                          true,
+				ImportStateId:                        "tag:terraform:acctest:filedistribution",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "tag",
 			},
 			// Update to be for a node
 			{
@@ -126,7 +125,6 @@ resource "qbee_filedistribution" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_filedistribution.test", "id", "placeholder"),
 					resource.TestCheckNoResourceAttr("qbee_filedistribution.test", "tag"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "node", "integrationtests"),
 					resource.TestCheckResourceAttr("qbee_filedistribution.test", "extend", "true"),
@@ -145,10 +143,11 @@ resource "qbee_filedistribution" "test" {
 			},
 			// Import from node
 			{
-				ResourceName:      "qbee_filedistribution.test",
-				ImportState:       true,
-				ImportStateId:     "node:integrationtests",
-				ImportStateVerify: true,
+				ResourceName:                         "qbee_filedistribution.test",
+				ImportState:                          true,
+				ImportStateId:                        "node:integrationtests",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "node",
 			},
 		},
 	})

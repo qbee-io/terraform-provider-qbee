@@ -39,7 +39,6 @@ resource "qbee_softwaremanagement" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_softwaremanagement.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_softwaremanagement.test", "node", "root"),
 					resource.TestCheckResourceAttr("qbee_softwaremanagement.test", "extend", "true"),
 					resource.TestCheckResourceAttr("qbee_softwaremanagement.test", "items.#", "1"),
@@ -80,7 +79,6 @@ resource "qbee_softwaremanagement" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_softwaremanagement.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_softwaremanagement.test", "tag", "terraform:acctest:softwaremanagement"),
 					resource.TestCheckNoResourceAttr("qbee_softwaremanagement.test", "node"),
 					resource.TestCheckResourceAttr("qbee_softwaremanagement.test", "extend", "false"),
@@ -101,10 +99,11 @@ resource "qbee_softwaremanagement" "test" {
 			},
 			// Import testing
 			{
-				ResourceName:      "qbee_softwaremanagement.test",
-				ImportState:       true,
-				ImportStateId:     "tag:terraform:acctest:softwaremanagement",
-				ImportStateVerify: true,
+				ResourceName:                         "qbee_softwaremanagement.test",
+				ImportState:                          true,
+				ImportStateId:                        "tag:terraform:acctest:softwaremanagement",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "tag",
 			},
 		},
 	})

@@ -25,7 +25,6 @@ resource "qbee_metrics_monitor" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "tag", "terraform:acctest:metrics_monitor"),
 					resource.TestCheckNoResourceAttr("qbee_metrics_monitor.test", "node"),
 					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "extend", "true"),
@@ -54,7 +53,6 @@ resource "qbee_metrics_monitor" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "tag", "terraform:acctest:metrics_monitor"),
 					resource.TestCheckNoResourceAttr("qbee_metrics_monitor.test", "node"),
 					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "extend", "false"),
@@ -66,6 +64,14 @@ resource "qbee_metrics_monitor" "test" {
 					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "metrics.1.threshold", "60.0"),
 					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "metrics.1.id", "/data"),
 				),
+			},
+			// Import tag
+			{
+				ResourceName:                         "qbee_metrics_monitor.test",
+				ImportState:                          true,
+				ImportStateId:                        "tag:terraform:acctest:metrics_monitor",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "tag",
 			},
 			// Update to be for a node
 			{
@@ -87,7 +93,6 @@ resource "qbee_metrics_monitor" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "id", "placeholder"),
 					resource.TestCheckNoResourceAttr("qbee_metrics_monitor.test", "tag"),
 					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "node", "integrationtests"),
 					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "extend", "true"),
@@ -102,10 +107,11 @@ resource "qbee_metrics_monitor" "test" {
 			},
 			// Import testing
 			{
-				ResourceName:      "qbee_metrics_monitor.test",
-				ImportState:       true,
-				ImportStateId:     "node:integrationtests",
-				ImportStateVerify: true,
+				ResourceName:                         "qbee_metrics_monitor.test",
+				ImportState:                          true,
+				ImportStateId:                        "node:integrationtests",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "node",
 			},
 		},
 	})

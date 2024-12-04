@@ -45,7 +45,6 @@ type parametersResource struct {
 type parametersResourceModel struct {
 	Node       types.String `tfsdk:"node"`
 	Tag        types.String `tfsdk:"tag"`
-	ID         types.String `tfsdk:"id"`
 	Extend     types.Bool   `tfsdk:"extend"`
 	Parameters []parameter  `tfsdk:"parameters"`
 }
@@ -77,10 +76,6 @@ func (r *parametersResource) Configure(_ context.Context, req resource.Configure
 func (r *parametersResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:    true,
-				Description: "Placeholder ID value",
-			},
 			"tag": schema.StringAttribute{
 				Optional:      true,
 				Description:   "The tag for which to set the configuration. Either tag or node is required.",
@@ -139,8 +134,6 @@ func (r *parametersResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ID = types.StringValue("placeholder")
-
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -166,8 +159,6 @@ func (r *parametersResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ID = types.StringValue("placeholder")
-
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -204,7 +195,6 @@ func (r *parametersResource) Read(ctx context.Context, req resource.ReadRequest,
 		return
 	}
 
-	state.ID = types.StringValue("placeholder")
 	state.Extend = types.BoolValue(currentParameters.Extend)
 
 	mappedParameters := make([]parameter, len(currentParameters.Parameters))

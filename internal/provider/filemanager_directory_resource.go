@@ -48,10 +48,6 @@ func (r *filemanagerDirectoryResource) Metadata(_ context.Context, req resource.
 func (r *filemanagerDirectoryResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:    true,
-				Description: "Placeholder ID value",
-			},
 			"path": schema.StringAttribute{
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
@@ -62,7 +58,6 @@ func (r *filemanagerDirectoryResource) Schema(_ context.Context, _ resource.Sche
 }
 
 type filemanagerDirectoryResourceModel struct {
-	ID   types.String `tfsdk:"id"`
 	Path types.String `tfsdk:"path"`
 }
 
@@ -92,8 +87,6 @@ func (r *filemanagerDirectoryResource) Create(ctx context.Context, req resource.
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ID = types.StringValue("placeholder")
-
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -137,7 +130,6 @@ func (r *filemanagerDirectoryResource) Read(ctx context.Context, req resource.Re
 	}
 
 	// Update the state
-	state.ID = types.StringValue("placeholder")
 	state.Path = types.StringValue(directoryPath)
 	resp.State.Set(ctx, state)
 }
@@ -175,7 +167,5 @@ func (r *filemanagerDirectoryResource) Delete(ctx context.Context, req resource.
 
 func (r *filemanagerDirectoryResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	cleanPath := filepath.Clean(req.ID)
-
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), "placeholder")...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("path"), cleanPath)...)
 }

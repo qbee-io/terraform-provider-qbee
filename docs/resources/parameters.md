@@ -25,10 +25,6 @@ description: |-
 - `parameters` (Attributes List) (see [below for nested schema](#nestedatt--parameters))
 - `tag` (String) The tag for which to set the configuration. Either tag or node is required.
 
-### Read-Only
-
-- `id` (String) Placeholder ID value
-
 <a id="nestedatt--parameters"></a>
 ### Nested Schema for `parameters`
 

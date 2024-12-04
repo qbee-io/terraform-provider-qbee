@@ -30,10 +30,6 @@ resource "qbee_filemanager_file" "example" {
 - `path` (String) The full path of the uploaded file.
 - `sourcefile` (String) The source file to upload.
 
-### Read-Only
-
-- `id` (String) Placeholder ID value
-
 ## Import
 
 Import is supported using the following syntax:

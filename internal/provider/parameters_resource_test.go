@@ -25,7 +25,6 @@ resource "qbee_parameters" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_parameters.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "tag", "terraform:acctest:parameters"),
 					resource.TestCheckNoResourceAttr("qbee_parameters.test", "node"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "extend", "true"),
@@ -53,7 +52,6 @@ resource "qbee_parameters" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_parameters.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "tag", "terraform:acctest:parameters"),
 					resource.TestCheckNoResourceAttr("qbee_parameters.test", "node"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "extend", "false"),
@@ -66,10 +64,11 @@ resource "qbee_parameters" "test" {
 			},
 			// Import tag
 			{
-				ResourceName:      "qbee_parameters.test",
-				ImportState:       true,
-				ImportStateId:     "tag:terraform:acctest:parameters",
-				ImportStateVerify: true,
+				ResourceName:                         "qbee_parameters.test",
+				ImportState:                          true,
+				ImportStateId:                        "tag:terraform:acctest:parameters",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "tag",
 			},
 			// Update to be for a node
 			{
@@ -90,7 +89,6 @@ resource "qbee_parameters" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_parameters.test", "id", "placeholder"),
 					resource.TestCheckNoResourceAttr("qbee_parameters.test", "tag"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "node", "integrationtests"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "extend", "true"),
@@ -103,10 +101,11 @@ resource "qbee_parameters" "test" {
 			},
 			// Import testing
 			{
-				ResourceName:      "qbee_parameters.test",
-				ImportState:       true,
-				ImportStateId:     "node:integrationtests",
-				ImportStateVerify: true,
+				ResourceName:                         "qbee_parameters.test",
+				ImportState:                          true,
+				ImportStateId:                        "node:integrationtests",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "node",
 			},
 		},
 	})

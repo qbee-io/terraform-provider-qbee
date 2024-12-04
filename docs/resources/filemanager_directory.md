@@ -26,10 +26,6 @@ resource "qbee_filemanager_directory" "example" {
 
 - `path` (String) The full path of the directory. Must not include a trailing slash. Example: /parent/directory
 
-### Read-Only
-
-- `id` (String) Placeholder ID value
-
 ## Import
 
 Import is supported using the following syntax:

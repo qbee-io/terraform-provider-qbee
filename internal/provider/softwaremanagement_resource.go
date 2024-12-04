@@ -59,7 +59,6 @@ func (r *softwaremanagementResource) Configure(_ context.Context, req resource.C
 type softwareManagementResourceModel struct {
 	Node   types.String `tfsdk:"node"`
 	Tag    types.String `tfsdk:"tag"`
-	ID     types.String `tfsdk:"id"`
 	Extend types.Bool   `tfsdk:"extend"`
 	Items  types.List   `tfsdk:"items"`
 }
@@ -159,10 +158,6 @@ func (p softwareManagementItemParameter) attrTypes() map[string]attr.Type {
 func (r *softwaremanagementResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:    true,
-				Description: "Placeholder ID value",
-			},
 			"tag": schema.StringAttribute{
 				Optional:      true,
 				Description:   "The tag for which to set the configuration. Either tag or node is required.",
@@ -263,8 +258,6 @@ func (r *softwaremanagementResource) Create(ctx context.Context, req resource.Cr
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ID = types.StringValue("placeholder")
-
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -340,8 +333,6 @@ func (r *softwaremanagementResource) Read(ctx context.Context, req resource.Read
 		return
 	}
 
-	state.ID = types.StringValue("placeholder")
-
 	resp.State.Set(ctx, state)
 }
 
@@ -364,8 +355,6 @@ func (r *softwaremanagementResource) Update(ctx context.Context, req resource.Up
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ID = types.StringValue("placeholder")
-
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)

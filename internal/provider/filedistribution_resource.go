@@ -58,10 +58,6 @@ func (r *filedistributionResource) Configure(_ context.Context, req resource.Con
 func (r *filedistributionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:    true,
-				Description: "Placeholder ID value",
-			},
 			"tag": schema.StringAttribute{
 				Optional:      true,
 				Description:   "The tag for which to set the configuration. Either tag or node is required.",
@@ -150,7 +146,6 @@ func (r *filedistributionResource) ConfigValidators(ctx context.Context) []resou
 type filedistributionResourceModel struct {
 	Node   types.String `tfsdk:"node"`
 	Tag    types.String `tfsdk:"tag"`
-	ID     types.String `tfsdk:"id"`
 	Extend types.Bool   `tfsdk:"extend"`
 	Files  []file       `tfsdk:"files"`
 }
@@ -222,8 +217,6 @@ func (r *filedistributionResource) Create(ctx context.Context, req resource.Crea
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ID = types.StringValue("placeholder")
-
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -249,8 +242,6 @@ func (r *filedistributionResource) Update(ctx context.Context, req resource.Upda
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ID = types.StringValue("placeholder")
-
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -398,7 +389,6 @@ func (r *filedistributionResource) Read(ctx context.Context, req resource.ReadRe
 		})
 	}
 
-	state.ID = types.StringValue("placeholder")
 	state.Extend = types.BoolValue(currentFiledistribution.Extend)
 	state.Files = files
 
