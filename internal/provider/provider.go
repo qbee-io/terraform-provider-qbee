@@ -129,6 +129,7 @@ func (p *QbeeProvider) Resources(ctx context.Context) []func() resource.Resource
 		NewFiledistributionResource,
 		NewSoftwareManagementResource,
 		NewFirewallResource,
+		NewConnectivityWatchdog,
 	}
 }
 

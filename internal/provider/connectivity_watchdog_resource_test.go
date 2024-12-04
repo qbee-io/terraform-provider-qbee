@@ -14,14 +14,14 @@ func TestAccConnectivityWatchdogResource(t *testing.T) {
 			{
 				Config: providerConfig + `
 resource "qbee_connectivity_watchdog" "test" {
-  tag = "terraform:acctest:connectivity_watchdog"
+  tag = "terraform:acctest:connectivitywatchdog"
   extend = false
-  threshold = "5"
+  threshold = 5
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_connectivity_watchdog.test", "id", "placeholder"),
-					resource.TestCheckResourceAttr("qbee_connectivity_watchdog.test", "tag", "terraform:acctest:connectivity_watchdog"),
+					resource.TestCheckResourceAttr("qbee_connectivity_watchdog.test", "tag", "terraform:acctest:connectivitywatchdog"),
 					resource.TestCheckNoResourceAttr("qbee_connectivity_watchdog.test", "node"),
 					resource.TestCheckResourceAttr("qbee_connectivity_watchdog.test", "extend", "false"),
 					resource.TestCheckResourceAttr("qbee_connectivity_watchdog.test", "threshold", "5"),
@@ -31,22 +31,22 @@ resource "qbee_connectivity_watchdog" "test" {
 			{
 				ResourceName:      "qbee_connectivity_watchdog.test",
 				ImportState:       true,
-				ImportStateId:     "tag:terraform:acctest:connectivity_watchdog",
+				ImportStateId:     "tag:terraform:acctest:connectivitywatchdog",
 				ImportStateVerify: true,
 			},
 			// Update
 			{
 				Config: providerConfig + `
 resource "qbee_connectivity_watchdog" "test" {
-  node = "terraform:acctest:connectivity_watchdog"
+  node = "integrationtests"
   extend = true
-  threshold = "3"
+  threshold = 3
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_connectivity_watchdog.test", "id", "placeholder"),
-					resource.TestCheckResourceAttr("qbee_connectivity_watchdog.test", "tag", "terraform:acctest:connectivity_watchdog"),
-					resource.TestCheckNoResourceAttr("qbee_connectivity_watchdog.test", "node"),
+					resource.TestCheckNoResourceAttr("qbee_connectivity_watchdog.test", "tag"),
+					resource.TestCheckResourceAttr("qbee_connectivity_watchdog.test", "node", "integrationtests"),
 					resource.TestCheckResourceAttr("qbee_connectivity_watchdog.test", "extend", "true"),
 					resource.TestCheckResourceAttr("qbee_connectivity_watchdog.test", "threshold", "3"),
 				),

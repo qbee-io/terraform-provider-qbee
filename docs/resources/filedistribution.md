@@ -71,7 +71,7 @@ resource "qbee_filedistribution" "example_node" {
 ### Required
 
 - `extend` (Boolean) If the configuration should extend configuration from the parent nodes of the node the configuration is applied to. If set to false, configuration from parent nodes is ignored.
-- `files` (Attributes List) The filesets that must be distributed (see [below for nested schema](#nestedatt--files))
+- `files` (Attributes List) The filesets to distribute. (see [below for nested schema](#nestedatt--files))
 
 ### Optional
 

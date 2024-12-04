@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"go.qbee.io/client"
 	"go.qbee.io/client/config"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -20,49 +21,47 @@ import (
 
 // Ensure the implementation satisfies the expected interfaces.
 var (
-	_ resource.Resource                     = &templateResource{}
-	_ resource.ResourceWithConfigure        = &templateResource{}
-	_ resource.ResourceWithConfigValidators = &templateResource{}
-	_ resource.ResourceWithImportState      = &templateResource{}
+	_ resource.Resource                     = &connectivityWatchdogResource{}
+	_ resource.ResourceWithConfigure        = &connectivityWatchdogResource{}
+	_ resource.ResourceWithConfigValidators = &connectivityWatchdogResource{}
+	_ resource.ResourceWithImportState      = &connectivityWatchdogResource{}
 )
-
-// TODO REMOVE
-const templateBundle config.Bundle = "template"
 
 const (
-	errorImportingTemplate = "error importing template resource"
-	errorWritingTemplate   = "error writing template resource"
-	errorReadingTemplate   = "error reading template resource"
-	errorDeletingTemplate  = "error deleting template resource"
+	errorImportingConnectivityWatchdog = "error importing connectivityWatchdog resource"
+	errorWritingConnectivityWatchdog   = "error writing connectivityWatchdog resource"
+	errorReadingConnectivityWatchdog   = "error reading connectivityWatchdog resource"
+	errorDeletingConnectivityWatchdog  = "error deleting connectivityWatchdog resource"
 )
 
-// NewTemplateResource is a helper function to simplify the provider implementation.
-func NewTemplate() resource.Resource {
-	return &templateResource{}
+// NewConnectivityWatchdogResource is a helper function to simplify the provider implementation.
+func NewConnectivityWatchdog() resource.Resource {
+	return &connectivityWatchdogResource{}
 }
 
-type templateResource struct {
+type connectivityWatchdogResource struct {
 	client *client.Client
 }
 
-type templateResourceModel struct {
-	Node   types.String `tfsdk:"node"`
-	Tag    types.String `tfsdk:"tag"`
-	ID     types.String `tfsdk:"id"`
-	Extend types.Bool   `tfsdk:"extend"`
+type connectivityWatchdogResourceModel struct {
+	Node      types.String `tfsdk:"node"`
+	Tag       types.String `tfsdk:"tag"`
+	ID        types.String `tfsdk:"id"`
+	Extend    types.Bool   `tfsdk:"extend"`
+	Threshold types.Int64  `tfsdk:"threshold"`
 }
 
-func (m templateResourceModel) typeAndIdentifier() (config.EntityType, string) {
+func (m connectivityWatchdogResourceModel) typeAndIdentifier() (config.EntityType, string) {
 	return typeAndIdentifier(m.Tag, m.Node)
 }
 
 // Metadata returns the resource type name.
-func (r *templateResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (r *connectivityWatchdogResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_connectivity_watchdog"
 }
 
 // Configure adds the provider configured client to the resource.
-func (r *templateResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
+func (r *connectivityWatchdogResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -71,7 +70,7 @@ func (r *templateResource) Configure(_ context.Context, req resource.ConfigureRe
 }
 
 // Schema defines the schema for the resource.
-func (r *templateResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *connectivityWatchdogResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -93,11 +92,15 @@ func (r *templateResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				Description: "If the configuration should extend configuration from the parent nodes of the node " +
 					"the configuration is applied to. If set to false, configuration from parent nodes is ignored.",
 			},
+			"threshold": schema.Int64Attribute{
+				Required:    true,
+				Description: "defines how many consecutive failed pings are allowed before the watchdog triggers a reboot.",
+			},
 		},
 	}
 }
 
-func (r *templateResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
+func (r *connectivityWatchdogResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
 	return []resource.ConfigValidator{
 		resourcevalidator.ExactlyOneOf(
 			path.MatchRoot("tag"),
@@ -107,16 +110,16 @@ func (r *templateResource) ConfigValidators(ctx context.Context) []resource.Conf
 }
 
 // Create creates the resource and sets the initial Terraform state.
-func (r *templateResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+func (r *connectivityWatchdogResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	// Retrieve values from the plan
-	var plan templateResourceModel
+	var plan connectivityWatchdogResourceModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	diags = r.writeTemplate(ctx, plan)
+	diags = r.writeConnectivityWatchdog(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -134,16 +137,16 @@ func (r *templateResource) Create(ctx context.Context, req resource.CreateReques
 }
 
 // Update updates the resource and sets the updated Terraform state on success.
-func (r *templateResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+func (r *connectivityWatchdogResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	// Retrieve values from the plan
-	var plan templateResourceModel
+	var plan connectivityWatchdogResourceModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	diags = r.writeTemplate(ctx, plan)
+	diags = r.writeConnectivityWatchdog(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -161,9 +164,9 @@ func (r *templateResource) Update(ctx context.Context, req resource.UpdateReques
 }
 
 // Read refreshes the Terraform state with the latest data.
-func (r *templateResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+func (r *connectivityWatchdogResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	// Get the current state
-	var state *templateResourceModel
+	var state *connectivityWatchdogResourceModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -175,24 +178,32 @@ func (r *templateResource) Read(ctx context.Context, req resource.ReadRequest, r
 	// Read the real status
 	activeConfig, err := r.client.GetActiveConfig(ctx, configType, identifier, config.EntityConfigScopeOwn)
 	if err != nil {
-		resp.Diagnostics.AddError(errorReadingTemplate,
+		resp.Diagnostics.AddError(errorReadingConnectivityWatchdog,
 			"error reading the active configuration: "+err.Error())
 
 		return
 	}
 
 	// Update the current state
-	// TODO: Actually perform mapping to state
-	fmt.Printf("Active config to be mapped: %v\n", activeConfig)
-	//currentTemplate := activeConfig.BundleData.Template
-	//if currentTemplate == nil {
-	//	resp.State.RemoveResource(ctx)
-	//	return
-	//}
+	currentConnectivityWatchdog := activeConfig.BundleData.ConnectivityWatchdog
+	if currentConnectivityWatchdog == nil {
+		resp.State.RemoveResource(ctx)
+		return
+	}
 
-	//state.ID = types.StringValue("placeholder")
-	//state.Extend = types.BoolValue(currentTemplate.Extend)
-	// state.Property = mappedProperty
+	state.ID = types.StringValue("placeholder")
+	state.Extend = types.BoolValue(currentConnectivityWatchdog.Extend)
+
+	threshold, err := strconv.ParseInt(currentConnectivityWatchdog.Threshold, 10, 64)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			errorReadingConnectivityWatchdog,
+			"error parsing the threshold value to an integer value: "+err.Error(),
+		)
+		return
+	}
+
+	state.Threshold = types.Int64Value(threshold)
 
 	diags = resp.State.Set(ctx, state)
 	resp.Diagnostics.Append(diags...)
@@ -202,9 +213,9 @@ func (r *templateResource) Read(ctx context.Context, req resource.ReadRequest, r
 }
 
 // Delete deletes the resource and removes the Terraform state on success.
-func (r *templateResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *connectivityWatchdogResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	// Retrieve values from the state
-	var state templateResourceModel
+	var state connectivityWatchdogResourceModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -213,58 +224,57 @@ func (r *templateResource) Delete(ctx context.Context, req resource.DeleteReques
 
 	// Delete the resource
 	configType, identifier := state.typeAndIdentifier()
-	tflog.Info(ctx, fmt.Sprintf("Deleting template for %v %v", configType, identifier))
+	tflog.Info(ctx, fmt.Sprintf("Deleting connectivityWatchdog for %v %v", configType, identifier))
 
-	//// TODO: Create correct content
-	//content := config.Template{
-	//	Metadata: config.Metadata{
-	//		Reset:   true,
-	//		Version: "v1",
-	//	},
-	//}
-	//
-	//changeRequest, err := createChangeRequest(config.TemplateBundle, content, configType, identifier)
-	//if err != nil {
-	//	resp.Diagnostics.AddError(
-	//		errorDeletingTemplate,
-	//		err.Error(),
-	//	)
-	//	return
-	//}
-	//
-	//change, err := r.client.CreateConfigurationChange(ctx, changeRequest)
-	//if err != nil {
-	//	resp.Diagnostics.AddError(
-	//		errorDeletingTemplate,
-	//		err.Error(),
-	//	)
-	//	return
-	//}
-	//
-	//_, err = r.client.CommitConfiguration(ctx, "terraform: create template_resource")
-	//if err != nil {
-	//	resp.Diagnostics.AddError(errorDeletingTemplate,
-	//		"error creating a commit to delete the template resource: "+err.Error(),
-	//	)
-	//
-	//	err = r.client.DeleteConfigurationChange(ctx, change.SHA)
-	//	if err != nil {
-	//		resp.Diagnostics.AddError(
-	//			errorDeletingTemplate,
-	//			"error deleting uncommitted template changes: "+err.Error(),
-	//		)
-	//	}
-	//
-	//	return
-	//}
+	content := config.ConnectivityWatchdog{
+		Metadata: config.Metadata{
+			Reset:   true,
+			Version: "v1",
+		},
+	}
+
+	changeRequest, err := createChangeRequest(config.ConnectivityWatchdogBundle, content, configType, identifier)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			errorDeletingConnectivityWatchdog,
+			err.Error(),
+		)
+		return
+	}
+
+	change, err := r.client.CreateConfigurationChange(ctx, changeRequest)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			errorDeletingConnectivityWatchdog,
+			err.Error(),
+		)
+		return
+	}
+
+	_, err = r.client.CommitConfiguration(ctx, "terraform: create connectivityWatchdog_resource")
+	if err != nil {
+		resp.Diagnostics.AddError(errorDeletingConnectivityWatchdog,
+			"error creating a commit to delete the connectivityWatchdog resource: "+err.Error(),
+		)
+
+		err = r.client.DeleteConfigurationChange(ctx, change.SHA)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				errorDeletingConnectivityWatchdog,
+				"error deleting uncommitted connectivityWatchdog changes: "+err.Error(),
+			)
+		}
+
+		return
+	}
 }
 
 // ImportState imports the resource state from the Terraform state.
-func (r *templateResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *connectivityWatchdogResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	configType, identifier, found := strings.Cut(req.ID, ":")
 	if !found || configType == "" || identifier == "" {
 		resp.Diagnostics.AddError(
-			errorImportingTemplate,
+			errorImportingConnectivityWatchdog,
 			fmt.Sprintf("Expected import identifier with format: type:identifier. Got: %q", req.ID),
 		)
 		return
@@ -277,36 +287,34 @@ func (r *templateResource) ImportState(ctx context.Context, req resource.ImportS
 		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("node"), identifier)...)
 	} else {
 		resp.Diagnostics.AddError(
-			errorImportingTemplate,
+			errorImportingConnectivityWatchdog,
 			fmt.Sprintf("Import type must be either 'node' or 'tag'. Got: %q", configType),
 		)
 		return
 	}
 }
 
-func (r *templateResource) writeTemplate(ctx context.Context, plan templateResourceModel) diag.Diagnostics {
+func (r *connectivityWatchdogResource) writeConnectivityWatchdog(ctx context.Context, plan connectivityWatchdogResourceModel) diag.Diagnostics {
 	configType, identifier := plan.typeAndIdentifier()
 	extend := plan.Extend.ValueBool()
 
 	// Create the resource
-	tflog.Info(ctx, fmt.Sprintf("Creating template for %v %v", configType, identifier))
+	tflog.Info(ctx, fmt.Sprintf("Creating connectivityWatchdog for %v %v", configType, identifier))
 
-	//content := config.Template{
-	content := struct{ Metadata config.Metadata }{
+	content := config.ConnectivityWatchdog{
 		Metadata: config.Metadata{
 			Enabled: true,
 			Extend:  extend,
 			Version: "v1",
 		},
-		// TODO: Add the actual content
+		Threshold: plan.Threshold.String(),
 	}
 
-	//changeRequest, err := createChangeRequest(config.FileDistributionBundle, content, configType, identifier)
-	changeRequest, err := createChangeRequest(templateBundle, content, configType, identifier)
+	changeRequest, err := createChangeRequest(config.ConnectivityWatchdogBundle, content, configType, identifier)
 	if err != nil {
 		return diag.Diagnostics{
 			diag.NewErrorDiagnostic(
-				errorWritingTemplate,
+				errorWritingConnectivityWatchdog,
 				err.Error(),
 			),
 		}
@@ -316,24 +324,24 @@ func (r *templateResource) writeTemplate(ctx context.Context, plan templateResou
 	if err != nil {
 		return diag.Diagnostics{
 			diag.NewErrorDiagnostic(
-				errorWritingTemplate,
-				fmt.Sprintf("Error creating a template resource with qbee: %v", err),
+				errorWritingConnectivityWatchdog,
+				fmt.Sprintf("Error creating a connectivityWatchdog resource with qbee: %v", err),
 			),
 		}
 	}
 
-	_, err = r.client.CommitConfiguration(ctx, "terraform: create template_resource")
+	_, err = r.client.CommitConfiguration(ctx, "terraform: create connectivityWatchdog_resource")
 	if err != nil {
 		diags := diag.Diagnostics{}
 
-		err = fmt.Errorf("error creating a commit for the template: %w", err)
-		diags.AddError(errorWritingTemplate, err.Error())
+		err = fmt.Errorf("error creating a commit for the connectivityWatchdog: %w", err)
+		diags.AddError(errorWritingConnectivityWatchdog, err.Error())
 
 		err = r.client.DeleteConfigurationChange(ctx, change.SHA)
 		if err != nil {
 			diags.AddError(
-				errorWritingTemplate,
-				fmt.Errorf("error deleting uncommitted template changes: %w", err).Error(),
+				errorWritingConnectivityWatchdog,
+				fmt.Errorf("error deleting uncommitted connectivityWatchdog changes: %w", err).Error(),
 			)
 		}
 
