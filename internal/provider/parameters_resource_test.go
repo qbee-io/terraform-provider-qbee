@@ -15,6 +15,7 @@ func TestAccParametersResource(t *testing.T) {
 				Config: providerConfig + `
 resource "qbee_parameters" "test" {
   tag = "terraform:acctest:parameters"
+  extend = true
   parameters = [
     {
       key = "parameter-key-1"
@@ -27,6 +28,7 @@ resource "qbee_parameters" "test" {
 					resource.TestCheckResourceAttr("qbee_parameters.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "tag", "terraform:acctest:parameters"),
 					resource.TestCheckNoResourceAttr("qbee_parameters.test", "node"),
+					resource.TestCheckResourceAttr("qbee_parameters.test", "extend", "true"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "parameters.#", "1"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "parameters.0.key", "parameter-key-1"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "parameters.0.value", "parameter-value-1"),
@@ -37,6 +39,7 @@ resource "qbee_parameters" "test" {
 				Config: providerConfig + `
 resource "qbee_parameters" "test" {
   tag = "terraform:acctest:parameters"
+  extend = false
   parameters = [
     {
       key = "parameter-key-1"
@@ -53,6 +56,7 @@ resource "qbee_parameters" "test" {
 					resource.TestCheckResourceAttr("qbee_parameters.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "tag", "terraform:acctest:parameters"),
 					resource.TestCheckNoResourceAttr("qbee_parameters.test", "node"),
+					resource.TestCheckResourceAttr("qbee_parameters.test", "extend", "false"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "parameters.#", "2"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "parameters.0.key", "parameter-key-1"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "parameters.0.value", "parameter-value-1"),
@@ -72,6 +76,7 @@ resource "qbee_parameters" "test" {
 				Config: providerConfig + `
 resource "qbee_parameters" "test" {
   node = "integrationtests"
+  extend = true
   parameters = [
     {
       key = "parameter-key-1"
@@ -88,6 +93,7 @@ resource "qbee_parameters" "test" {
 					resource.TestCheckResourceAttr("qbee_parameters.test", "id", "placeholder"),
 					resource.TestCheckNoResourceAttr("qbee_parameters.test", "tag"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "node", "integrationtests"),
+					resource.TestCheckResourceAttr("qbee_parameters.test", "extend", "true"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "parameters.#", "2"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "parameters.0.key", "parameter-key-1"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "parameters.0.value", "parameter-value-1"),

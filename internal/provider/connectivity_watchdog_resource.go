@@ -35,7 +35,7 @@ const (
 )
 
 // NewConnectivityWatchdogResource is a helper function to simplify the provider implementation.
-func NewConnectivityWatchdog() resource.Resource {
+func NewConnectivityWatchdogResource() resource.Resource {
 	return &connectivityWatchdogResource{}
 }
 

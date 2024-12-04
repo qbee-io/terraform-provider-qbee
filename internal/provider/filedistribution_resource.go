@@ -160,11 +160,11 @@ func (m filedistributionResourceModel) typeAndIdentifier() (config.EntityType, s
 }
 
 type file struct {
-	Label        types.String `tfsdk:"label"`
-	Command      types.String `tfsdk:"command"`
-	PreCondition types.String `tfsdk:"pre_condition"`
-	Templates    []template   `tfsdk:"templates"`
-	Parameters   []parameter  `tfsdk:"parameters"`
+	Label        types.String        `tfsdk:"label"`
+	Command      types.String        `tfsdk:"command"`
+	PreCondition types.String        `tfsdk:"pre_condition"`
+	Templates    []template          `tfsdk:"templates"`
+	Parameters   []templateParameter `tfsdk:"parameters"`
 }
 
 func (f file) toQbeeFileSet() config.FileSet {
@@ -194,7 +194,7 @@ func (f file) toQbeeFileSet() config.FileSet {
 	}
 }
 
-type parameter struct {
+type templateParameter struct {
 	Key   types.String `tfsdk:"key"`
 	Value types.String `tfsdk:"value"`
 }
@@ -360,9 +360,9 @@ func (r *filedistributionResource) Read(ctx context.Context, req resource.ReadRe
 			})
 		}
 
-		var parameters []parameter
+		var parameters []templateParameter
 		for _, p := range f.TemplateParameters {
-			parameters = append(parameters, parameter{
+			parameters = append(parameters, templateParameter{
 				Key:   types.StringValue(p.Key),
 				Value: types.StringValue(p.Value),
 			})

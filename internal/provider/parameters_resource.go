@@ -20,49 +20,52 @@ import (
 
 // Ensure the implementation satisfies the expected interfaces.
 var (
-	_ resource.Resource                     = &templateResource{}
-	_ resource.ResourceWithConfigure        = &templateResource{}
-	_ resource.ResourceWithConfigValidators = &templateResource{}
-	_ resource.ResourceWithImportState      = &templateResource{}
+	_ resource.Resource                     = &parametersResource{}
+	_ resource.ResourceWithConfigure        = &parametersResource{}
+	_ resource.ResourceWithConfigValidators = &parametersResource{}
+	_ resource.ResourceWithImportState      = &parametersResource{}
 )
-
-// TODO REMOVE
-const templateBundle config.Bundle = "template"
 
 const (
-	errorImportingTemplate = "error importing template resource"
-	errorWritingTemplate   = "error writing template resource"
-	errorReadingTemplate   = "error reading template resource"
-	errorDeletingTemplate  = "error deleting template resource"
+	errorImportingParameters = "error importing parameters resource"
+	errorWritingParameters   = "error writing parameters resource"
+	errorReadingParameters   = "error reading parameters resource"
+	errorDeletingParameters  = "error deleting parameters resource"
 )
 
-// NewTemplateResource is a helper function to simplify the provider implementation.
-func NewTemplateResource() resource.Resource {
-	return &templateResource{}
+// NewParametersResource is a helper function to simplify the provider implementation.
+func NewParametersResource() resource.Resource {
+	return &parametersResource{}
 }
 
-type templateResource struct {
+type parametersResource struct {
 	client *client.Client
 }
 
-type templateResourceModel struct {
-	Node   types.String `tfsdk:"node"`
-	Tag    types.String `tfsdk:"tag"`
-	ID     types.String `tfsdk:"id"`
-	Extend types.Bool   `tfsdk:"extend"`
+type parametersResourceModel struct {
+	Node       types.String `tfsdk:"node"`
+	Tag        types.String `tfsdk:"tag"`
+	ID         types.String `tfsdk:"id"`
+	Extend     types.Bool   `tfsdk:"extend"`
+	Parameters []parameter  `tfsdk:"parameters"`
 }
 
-func (m templateResourceModel) typeAndIdentifier() (config.EntityType, string) {
+func (m parametersResourceModel) typeAndIdentifier() (config.EntityType, string) {
 	return typeAndIdentifier(m.Tag, m.Node)
 }
 
+type parameter struct {
+	Key   types.String `tfsdk:"key"`
+	Value types.String `tfsdk:"value"`
+}
+
 // Metadata returns the resource type name.
-func (r *templateResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_template"
+func (r *parametersResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_parameters"
 }
 
 // Configure adds the provider configured client to the resource.
-func (r *templateResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
+func (r *parametersResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -71,7 +74,7 @@ func (r *templateResource) Configure(_ context.Context, req resource.ConfigureRe
 }
 
 // Schema defines the schema for the resource.
-func (r *templateResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *parametersResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -93,11 +96,24 @@ func (r *templateResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				Description: "If the configuration should extend configuration from the parent nodes of the node " +
 					"the configuration is applied to. If set to false, configuration from parent nodes is ignored.",
 			},
+			"parameters": schema.ListNestedAttribute{
+				Optional: true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"key": schema.StringAttribute{
+							Required: true,
+						},
+						"value": schema.StringAttribute{
+							Required: true,
+						},
+					},
+				},
+			},
 		},
 	}
 }
 
-func (r *templateResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
+func (r *parametersResource) ConfigValidators(ctx context.Context) []resource.ConfigValidator {
 	return []resource.ConfigValidator{
 		resourcevalidator.ExactlyOneOf(
 			path.MatchRoot("tag"),
@@ -107,16 +123,16 @@ func (r *templateResource) ConfigValidators(ctx context.Context) []resource.Conf
 }
 
 // Create creates the resource and sets the initial Terraform state.
-func (r *templateResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+func (r *parametersResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	// Retrieve values from the plan
-	var plan templateResourceModel
+	var plan parametersResourceModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	diags = r.writeTemplate(ctx, plan)
+	diags = r.writeParameters(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -134,16 +150,16 @@ func (r *templateResource) Create(ctx context.Context, req resource.CreateReques
 }
 
 // Update updates the resource and sets the updated Terraform state on success.
-func (r *templateResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+func (r *parametersResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	// Retrieve values from the plan
-	var plan templateResourceModel
+	var plan parametersResourceModel
 	diags := req.Plan.Get(ctx, &plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	diags = r.writeTemplate(ctx, plan)
+	diags = r.writeParameters(ctx, plan)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -161,9 +177,9 @@ func (r *templateResource) Update(ctx context.Context, req resource.UpdateReques
 }
 
 // Read refreshes the Terraform state with the latest data.
-func (r *templateResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+func (r *parametersResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	// Get the current state
-	var state *templateResourceModel
+	var state *parametersResourceModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -175,24 +191,30 @@ func (r *templateResource) Read(ctx context.Context, req resource.ReadRequest, r
 	// Read the real status
 	activeConfig, err := r.client.GetActiveConfig(ctx, configType, identifier, config.EntityConfigScopeOwn)
 	if err != nil {
-		resp.Diagnostics.AddError(errorReadingTemplate,
+		resp.Diagnostics.AddError(errorReadingParameters,
 			"error reading the active configuration: "+err.Error())
 
 		return
 	}
 
 	// Update the current state
-	// TODO: Actually perform mapping to state
-	fmt.Printf("Active config to be mapped: %v\n", activeConfig)
-	//currentTemplate := activeConfig.BundleData.Template
-	//if currentTemplate == nil {
-	//	resp.State.RemoveResource(ctx)
-	//	return
-	//}
+	currentParameters := activeConfig.BundleData.Parameters
+	if currentParameters == nil {
+		resp.State.RemoveResource(ctx)
+		return
+	}
 
-	//state.ID = types.StringValue("placeholder")
-	//state.Extend = types.BoolValue(currentTemplate.Extend)
-	// state.Property = mappedProperty
+	state.ID = types.StringValue("placeholder")
+	state.Extend = types.BoolValue(currentParameters.Extend)
+
+	mappedParameters := make([]parameter, len(currentParameters.Parameters))
+	for i, p := range currentParameters.Parameters {
+		mappedParameters[i] = parameter{
+			Key:   types.StringValue(p.Key),
+			Value: types.StringValue(p.Value),
+		}
+	}
+	state.Parameters = mappedParameters
 
 	diags = resp.State.Set(ctx, state)
 	resp.Diagnostics.Append(diags...)
@@ -202,9 +224,9 @@ func (r *templateResource) Read(ctx context.Context, req resource.ReadRequest, r
 }
 
 // Delete deletes the resource and removes the Terraform state on success.
-func (r *templateResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+func (r *parametersResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	// Retrieve values from the state
-	var state templateResourceModel
+	var state parametersResourceModel
 	diags := req.State.Get(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -213,58 +235,57 @@ func (r *templateResource) Delete(ctx context.Context, req resource.DeleteReques
 
 	// Delete the resource
 	configType, identifier := state.typeAndIdentifier()
-	tflog.Info(ctx, fmt.Sprintf("Deleting template for %v %v", configType, identifier))
+	tflog.Info(ctx, fmt.Sprintf("Deleting parameters for %v %v", configType, identifier))
 
-	//// TODO: Create correct content
-	//content := config.Template{
-	//	Metadata: config.Metadata{
-	//		Reset:   true,
-	//		Version: "v1",
-	//	},
-	//}
-	//
-	//changeRequest, err := createChangeRequest(config.TemplateBundle, content, configType, identifier)
-	//if err != nil {
-	//	resp.Diagnostics.AddError(
-	//		errorDeletingTemplate,
-	//		err.Error(),
-	//	)
-	//	return
-	//}
-	//
-	//change, err := r.client.CreateConfigurationChange(ctx, changeRequest)
-	//if err != nil {
-	//	resp.Diagnostics.AddError(
-	//		errorDeletingTemplate,
-	//		err.Error(),
-	//	)
-	//	return
-	//}
-	//
-	//_, err = r.client.CommitConfiguration(ctx, "terraform: create template_resource")
-	//if err != nil {
-	//	resp.Diagnostics.AddError(errorDeletingTemplate,
-	//		"error creating a commit to delete the template resource: "+err.Error(),
-	//	)
-	//
-	//	err = r.client.DeleteConfigurationChange(ctx, change.SHA)
-	//	if err != nil {
-	//		resp.Diagnostics.AddError(
-	//			errorDeletingTemplate,
-	//			"error deleting uncommitted template changes: "+err.Error(),
-	//		)
-	//	}
-	//
-	//	return
-	//}
+	content := config.Parameters{
+		Metadata: config.Metadata{
+			Reset:   true,
+			Version: "v1",
+		},
+	}
+
+	changeRequest, err := createChangeRequest(config.ParametersBundle, content, configType, identifier)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			errorDeletingParameters,
+			err.Error(),
+		)
+		return
+	}
+
+	change, err := r.client.CreateConfigurationChange(ctx, changeRequest)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			errorDeletingParameters,
+			err.Error(),
+		)
+		return
+	}
+
+	_, err = r.client.CommitConfiguration(ctx, "terraform: create parameters_resource")
+	if err != nil {
+		resp.Diagnostics.AddError(errorDeletingParameters,
+			"error creating a commit to delete the parameters resource: "+err.Error(),
+		)
+
+		err = r.client.DeleteConfigurationChange(ctx, change.SHA)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				errorDeletingParameters,
+				"error deleting uncommitted parameters changes: "+err.Error(),
+			)
+		}
+
+		return
+	}
 }
 
 // ImportState imports the resource state from the Terraform state.
-func (r *templateResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *parametersResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	configType, identifier, found := strings.Cut(req.ID, ":")
 	if !found || configType == "" || identifier == "" {
 		resp.Diagnostics.AddError(
-			errorImportingTemplate,
+			errorImportingParameters,
 			fmt.Sprintf("Expected import identifier with format: type:identifier. Got: %q", req.ID),
 		)
 		return
@@ -277,36 +298,42 @@ func (r *templateResource) ImportState(ctx context.Context, req resource.ImportS
 		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("node"), identifier)...)
 	} else {
 		resp.Diagnostics.AddError(
-			errorImportingTemplate,
+			errorImportingParameters,
 			fmt.Sprintf("Import type must be either 'node' or 'tag'. Got: %q", configType),
 		)
 		return
 	}
 }
 
-func (r *templateResource) writeTemplate(ctx context.Context, plan templateResourceModel) diag.Diagnostics {
+func (r *parametersResource) writeParameters(ctx context.Context, plan parametersResourceModel) diag.Diagnostics {
 	configType, identifier := plan.typeAndIdentifier()
 	extend := plan.Extend.ValueBool()
 
 	// Create the resource
-	tflog.Info(ctx, fmt.Sprintf("Creating template for %v %v", configType, identifier))
+	tflog.Info(ctx, fmt.Sprintf("Creating parameters for %v %v", configType, identifier))
 
-	//content := config.Template{
-	content := struct{ Metadata config.Metadata }{
+	mappedParameters := make([]config.Parameter, len(plan.Parameters))
+	for i, p := range plan.Parameters {
+		mappedParameters[i] = config.Parameter{
+			Key:   p.Key.ValueString(),
+			Value: p.Value.ValueString(),
+		}
+	}
+
+	content := config.Parameters{
 		Metadata: config.Metadata{
 			Enabled: true,
 			Extend:  extend,
 			Version: "v1",
 		},
-		// TODO: Add the actual content
+		Parameters: mappedParameters,
 	}
 
-	//changeRequest, err := createChangeRequest(config.TemplateBundle, content, configType, identifier)
-	changeRequest, err := createChangeRequest(templateBundle, content, configType, identifier)
+	changeRequest, err := createChangeRequest(config.ParametersBundle, content, configType, identifier)
 	if err != nil {
 		return diag.Diagnostics{
 			diag.NewErrorDiagnostic(
-				errorWritingTemplate,
+				errorWritingParameters,
 				err.Error(),
 			),
 		}
@@ -316,24 +343,24 @@ func (r *templateResource) writeTemplate(ctx context.Context, plan templateResou
 	if err != nil {
 		return diag.Diagnostics{
 			diag.NewErrorDiagnostic(
-				errorWritingTemplate,
-				fmt.Sprintf("Error creating a template resource with qbee: %v", err),
+				errorWritingParameters,
+				fmt.Sprintf("Error creating a parameters resource with qbee: %v", err),
 			),
 		}
 	}
 
-	_, err = r.client.CommitConfiguration(ctx, "terraform: create template_resource")
+	_, err = r.client.CommitConfiguration(ctx, "terraform: create parameters_resource")
 	if err != nil {
 		diags := diag.Diagnostics{}
 
-		err = fmt.Errorf("error creating a commit for the template: %w", err)
-		diags.AddError(errorWritingTemplate, err.Error())
+		err = fmt.Errorf("error creating a commit for the parameters: %w", err)
+		diags.AddError(errorWritingParameters, err.Error())
 
 		err = r.client.DeleteConfigurationChange(ctx, change.SHA)
 		if err != nil {
 			diags.AddError(
-				errorWritingTemplate,
-				fmt.Errorf("error deleting uncommitted template changes: %w", err).Error(),
+				errorWritingParameters,
+				fmt.Errorf("error deleting uncommitted parameters changes: %w", err).Error(),
 			)
 		}
 
