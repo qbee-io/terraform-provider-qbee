@@ -9,7 +9,7 @@ a [qbee](https://qbee.io) account using Terraform.
 
 ## Using the provider
 
-For documentation on how to use this provider, see the [provider documentation](https://registry.terraform.io/providers/lesteenman/qbee-lesteenman/latest/docs)
+For documentation on how to use this provider, see the [provider documentation](https://registry.terraform.io/providers/qbee.io/qbee/latest/docs)
 at the Terraform Registry.
 
 ## Developing the Provider
@@ -92,7 +92,7 @@ terraform project where you want to use it:
 # From the root of your terraform project (where your *.tf files are stored):
 GOOS=$(go env GOOS)
 GOARCH=$(go env GOARCH)
-TARGET_DIR=".terraform/plugins/github.com/lesteenman/terraform-provider-qbee-lesteenman/$VERSION/${GOOS}_${GOARCH}"
+TARGET_DIR=".terraform/plugins/github.com/qbee.io/terraform-provider-qbee/$VERSION/${GOOS}_${GOARCH}"
 
 mkdir -p "$TARGET_DIR"
 cp <dist> "$TARGET_DIR"
