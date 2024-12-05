@@ -15,7 +15,8 @@ func TestAccUsersResource(t *testing.T) {
 				Config: providerConfig + `
 resource "qbee_users" "test" {
   tag = "terraform:acctest:users"
-  items = [
+  extend = true
+  users = [
     {
       username = "test-user-1"
       action = "add"
@@ -26,9 +27,10 @@ resource "qbee_users" "test" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_users.test", "tag", "terraform:acctest:users"),
 					resource.TestCheckNoResourceAttr("qbee_users.test", "node"),
-					resource.TestCheckResourceAttr("qbee_users.test", "items.#", "1"),
-					resource.TestCheckResourceAttr("qbee_users.test", "items.0.username", "test-user-1"),
-					resource.TestCheckResourceAttr("qbee_users.test", "items.0.action", "add"),
+					resource.TestCheckResourceAttr("qbee_users.test", "extend", "true"),
+					resource.TestCheckResourceAttr("qbee_users.test", "users.#", "1"),
+					resource.TestCheckResourceAttr("qbee_users.test", "users.0.username", "test-user-1"),
+					resource.TestCheckResourceAttr("qbee_users.test", "users.0.action", "add"),
 				),
 			},
 			// Update to a different template
@@ -36,7 +38,8 @@ resource "qbee_users" "test" {
 				Config: providerConfig + `
 resource "qbee_users" "test" {
   tag = "terraform:acctest:users"
-  items = [
+  extend = false
+  users = [
     {
       username = "test-user-2"
       action = "add"
@@ -51,11 +54,12 @@ resource "qbee_users" "test" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_users.test", "tag", "terraform:acctest:users"),
 					resource.TestCheckNoResourceAttr("qbee_users.test", "node"),
-					resource.TestCheckResourceAttr("qbee_users.test", "items.#", "2"),
-					resource.TestCheckResourceAttr("qbee_users.test", "items.0.username", "test-user-2"),
-					resource.TestCheckResourceAttr("qbee_users.test", "items.0.action", "add"),
-					resource.TestCheckResourceAttr("qbee_users.test", "items.1.username", "default-user"),
-					resource.TestCheckResourceAttr("qbee_users.test", "items.1.action", "remove"),
+					resource.TestCheckResourceAttr("qbee_users.test", "extend", "false"),
+					resource.TestCheckResourceAttr("qbee_users.test", "users.#", "2"),
+					resource.TestCheckResourceAttr("qbee_users.test", "users.0.username", "test-user-2"),
+					resource.TestCheckResourceAttr("qbee_users.test", "users.0.action", "add"),
+					resource.TestCheckResourceAttr("qbee_users.test", "users.1.username", "default-user"),
+					resource.TestCheckResourceAttr("qbee_users.test", "users.1.action", "remove"),
 				),
 			},
 			// Import from tag
@@ -71,7 +75,8 @@ resource "qbee_users" "test" {
 				Config: providerConfig + `
 resource "qbee_users" "test" {
   node = "integrationtests"
-  items = [
+  extend = true
+  users = [
     {
       username = "test-user-2"
       action = "add"
@@ -86,11 +91,12 @@ resource "qbee_users" "test" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckNoResourceAttr("qbee_users.test", "tag"),
 					resource.TestCheckResourceAttr("qbee_users.test", "node", "integrationtests"),
-					resource.TestCheckResourceAttr("qbee_users.test", "items.#", "2"),
-					resource.TestCheckResourceAttr("qbee_users.test", "items.0.username", "test-user-2"),
-					resource.TestCheckResourceAttr("qbee_users.test", "items.0.action", "add"),
-					resource.TestCheckResourceAttr("qbee_users.test", "items.1.username", "default-user"),
-					resource.TestCheckResourceAttr("qbee_users.test", "items.1.action", "remove"),
+					resource.TestCheckResourceAttr("qbee_users.test", "extend", "true"),
+					resource.TestCheckResourceAttr("qbee_users.test", "users.#", "2"),
+					resource.TestCheckResourceAttr("qbee_users.test", "users.0.username", "test-user-2"),
+					resource.TestCheckResourceAttr("qbee_users.test", "users.0.action", "add"),
+					resource.TestCheckResourceAttr("qbee_users.test", "users.1.username", "default-user"),
+					resource.TestCheckResourceAttr("qbee_users.test", "users.1.action", "remove"),
 				),
 			},
 			// Import from node
