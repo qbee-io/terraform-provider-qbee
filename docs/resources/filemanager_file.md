@@ -3,12 +3,12 @@
 page_title: "qbee_filemanager_file Resource - qbee"
 subcategory: ""
 description: |-
-  
+  The filemanager_file resource allows you to create and manage files in the file manager.
 ---
 
 # qbee_filemanager_file (Resource)
 
-
+The filemanager_file resource allows you to create and manage files in the file manager.
 
 ## Example Usage
 

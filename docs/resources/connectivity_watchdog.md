@@ -3,12 +3,12 @@
 page_title: "qbee_connectivity_watchdog Resource - qbee"
 subcategory: ""
 description: |-
-  
+  When enabled, will count failed connection attempts to the device hub and reboot the device if the threshold is reached.
 ---
 
 # qbee_connectivity_watchdog (Resource)
 
-
+When enabled, will count failed connection attempts to the device hub and reboot the device if the threshold is reached.
 
 ## Example Usage
 

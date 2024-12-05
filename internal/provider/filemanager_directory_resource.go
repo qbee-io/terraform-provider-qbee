@@ -47,6 +47,7 @@ func (r *filemanagerDirectoryResource) Metadata(_ context.Context, req resource.
 // Schema defines the schema for the resource.
 func (r *filemanagerDirectoryResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "The filemanager_directory resource allows you to create and manage directories in the file manager.",
 		Attributes: map[string]schema.Attribute{
 			"path": schema.StringAttribute{
 				Required:            true,

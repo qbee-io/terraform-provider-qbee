@@ -57,6 +57,7 @@ func (r *filedistributionResource) Configure(_ context.Context, req resource.Con
 // Schema defines the schema for the resource.
 func (r *filedistributionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "Defines a file set to be maintained in the system.",
 		Attributes: map[string]schema.Attribute{
 			"tag": schema.StringAttribute{
 				Optional:      true,
@@ -83,7 +84,8 @@ func (r *filedistributionResource) Schema(_ context.Context, _ resource.SchemaRe
 							Description: "An optional label for the fileset.",
 						},
 						"templates": schema.ListNestedAttribute{
-							Required: true,
+							Required:    true,
+							Description: "Defines files to be created in the filesystem.",
 							NestedObject: schema.NestedAttributeObject{
 								Attributes: map[string]schema.Attribute{
 									"source": schema.StringAttribute{
@@ -105,14 +107,17 @@ func (r *filedistributionResource) Schema(_ context.Context, _ resource.SchemaRe
 							},
 						},
 						"parameters": schema.ListNestedAttribute{
-							Optional: true,
+							Optional:    true,
+							Description: "Define values to be used for template files.",
 							NestedObject: schema.NestedAttributeObject{
 								Attributes: map[string]schema.Attribute{
 									"key": schema.StringAttribute{
-										Required: true,
+										Description: "Key of the parameter used in files.",
+										Required:    true,
 									},
 									"value": schema.StringAttribute{
-										Required: true,
+										Description: "Value of the parameter which will replace Key placeholders.",
+										Required:    true,
 									},
 								},
 							},

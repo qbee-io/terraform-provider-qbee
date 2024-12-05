@@ -77,6 +77,7 @@ func (r *podmanContainersResource) Configure(_ context.Context, req resource.Con
 // Schema defines the schema for the resource.
 func (r *podmanContainersResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "podman_containers controls podman containers running in the system.",
 		Attributes: map[string]schema.Attribute{
 			"tag": schema.StringAttribute{
 				Optional:      true,

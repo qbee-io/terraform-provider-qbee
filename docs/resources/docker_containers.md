@@ -3,12 +3,12 @@
 page_title: "qbee_docker_containers Resource - qbee"
 subcategory: ""
 description: |-
-  
+  Controls docker containers running in the system.
 ---
 
 # qbee_docker_containers (Resource)
 
-
+Controls docker containers running in the system.
 
 ## Example Usage
 

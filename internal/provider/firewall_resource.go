@@ -59,6 +59,7 @@ func (r *firewallResource) Configure(_ context.Context, req resource.ConfigureRe
 // Schema defines the schema for the resource.
 func (r *firewallResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "Firewall configures system firewall.",
 		Attributes: map[string]schema.Attribute{
 			"tag": schema.StringAttribute{
 				Optional:      true,

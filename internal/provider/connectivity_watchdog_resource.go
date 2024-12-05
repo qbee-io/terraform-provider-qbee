@@ -71,6 +71,7 @@ func (r *connectivityWatchdogResource) Configure(_ context.Context, req resource
 // Schema defines the schema for the resource.
 func (r *connectivityWatchdogResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "When enabled, will count failed connection attempts to the device hub and reboot the device if the threshold is reached.",
 		Attributes: map[string]schema.Attribute{
 			"tag": schema.StringAttribute{
 				Optional:      true,

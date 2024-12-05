@@ -3,12 +3,12 @@
 page_title: "qbee_filedistribution Resource - qbee"
 subcategory: ""
 description: |-
-  
+  Defines a file set to be maintained in the system.
 ---
 
 # qbee_filedistribution (Resource)
 
-
+Defines a file set to be maintained in the system.
 
 ## Example Usage
 
@@ -83,13 +83,13 @@ resource "qbee_filedistribution" "example_node" {
 
 Required:
 
-- `templates` (Attributes List) (see [below for nested schema](#nestedatt--files--templates))
+- `templates` (Attributes List) Defines files to be created in the filesystem. (see [below for nested schema](#nestedatt--files--templates))
 
 Optional:
 
 - `command` (String) A command that will be run on the device after this fileset is distributed. Example: `/bin/true`.
 - `label` (String) An optional label for the fileset.
-- `parameters` (Attributes List) (see [below for nested schema](#nestedatt--files--parameters))
+- `parameters` (Attributes List) Define values to be used for template files. (see [below for nested schema](#nestedatt--files--parameters))
 - `pre_condition` (String) A command that must successfully execute on the device (return a non-zero exit code) before this fileset can be distributed. Example: `/bin/true`.
 
 <a id="nestedatt--files--templates"></a>
@@ -107,8 +107,8 @@ Required:
 
 Required:
 
-- `key` (String)
-- `value` (String)
+- `key` (String) Key of the parameter used in files.
+- `value` (String) Value of the parameter which will replace Key placeholders.
 
 ## Import
 

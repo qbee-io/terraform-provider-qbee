@@ -3,12 +3,12 @@
 page_title: "qbee_grouptree_group Resource - qbee"
 subcategory: ""
 description: |-
-  
+  The grouptree_group resource allows you to create and manage groups in the grouptree.
 ---
 
 # qbee_grouptree_group (Resource)
 
-
+The grouptree_group resource allows you to create and manage groups in the grouptree.
 
 ## Example Usage
 

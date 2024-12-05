@@ -3,12 +3,12 @@
 page_title: "qbee_filemanager_directory Resource - qbee"
 subcategory: ""
 description: |-
-  
+  The filemanager_directory resource allows you to create and manage directories in the file manager.
 ---
 
 # qbee_filemanager_directory (Resource)
 
-
+The filemanager_directory resource allows you to create and manage directories in the file manager.
 
 ## Example Usage
 

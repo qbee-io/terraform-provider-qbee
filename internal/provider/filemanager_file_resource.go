@@ -55,6 +55,7 @@ func (r *filemanagerFileResource) Configure(_ context.Context, req resource.Conf
 // Schema defines the schema for the resource.
 func (r *filemanagerFileResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "The filemanager_file resource allows you to create and manage files in the file manager.",
 		Attributes: map[string]schema.Attribute{
 			"path": schema.StringAttribute{
 				Required:            true,

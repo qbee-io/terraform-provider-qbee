@@ -3,12 +3,12 @@
 page_title: "qbee_parameters Resource - qbee"
 subcategory: ""
 description: |-
-  
+  Parameters sets global configuration parameters.
 ---
 
 # qbee_parameters (Resource)
 
-
+Parameters sets global configuration parameters.
 
 ## Example Usage
 

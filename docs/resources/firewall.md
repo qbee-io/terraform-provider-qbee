@@ -3,12 +3,12 @@
 page_title: "qbee_firewall Resource - qbee"
 subcategory: ""
 description: |-
-  
+  Firewall configures system firewall.
 ---
 
 # qbee_firewall (Resource)
 
-
+Firewall configures system firewall.
 
 ## Example Usage
 

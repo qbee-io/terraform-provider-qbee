@@ -82,6 +82,7 @@ func (r *parametersResource) Configure(_ context.Context, req resource.Configure
 // Schema defines the schema for the resource.
 func (r *parametersResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "Parameters sets global configuration parameters.",
 		Attributes: map[string]schema.Attribute{
 			"tag": schema.StringAttribute{
 				Optional:      true,

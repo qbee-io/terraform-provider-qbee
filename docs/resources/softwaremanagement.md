@@ -3,12 +3,12 @@
 page_title: "qbee_softwaremanagement Resource - qbee"
 subcategory: ""
 description: |-
-  
+  SoftwareManagement controls software in the system.
 ---
 
 # qbee_softwaremanagement (Resource)
 
-
+SoftwareManagement controls software in the system.
 
 ## Example Usage
 

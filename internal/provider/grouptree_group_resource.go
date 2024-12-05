@@ -46,6 +46,7 @@ func (r *grouptreeGroupResource) Configure(_ context.Context, req resource.Confi
 // Schema defines the schema for the resource.
 func (r *grouptreeGroupResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "The grouptree_group resource allows you to create and manage groups in the grouptree.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				Required:    true,

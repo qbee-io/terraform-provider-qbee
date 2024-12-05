@@ -77,6 +77,7 @@ func (r *dockerContainersResource) Configure(_ context.Context, req resource.Con
 // Schema defines the schema for the resource.
 func (r *dockerContainersResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "Controls docker containers running in the system.",
 		Attributes: map[string]schema.Attribute{
 			"tag": schema.StringAttribute{
 				Optional:      true,

@@ -3,12 +3,12 @@
 page_title: "qbee_podman_containers Resource - qbee"
 subcategory: ""
 description: |-
-  
+  podman_containers controls podman containers running in the system.
 ---
 
 # qbee_podman_containers (Resource)
 
-
+podman_containers controls podman containers running in the system.
 
 ## Example Usage
 
