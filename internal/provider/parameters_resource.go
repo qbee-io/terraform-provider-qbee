@@ -47,6 +47,7 @@ type parametersResourceModel struct {
 	Tag        types.String `tfsdk:"tag"`
 	Extend     types.Bool   `tfsdk:"extend"`
 	Parameters []parameter  `tfsdk:"parameters"`
+	Secrets    []secret     `tfsdk:"secrets"`
 }
 
 func (m parametersResourceModel) typeAndIdentifier() (config.EntityType, string) {
@@ -56,6 +57,12 @@ func (m parametersResourceModel) typeAndIdentifier() (config.EntityType, string)
 type parameter struct {
 	Key   types.String `tfsdk:"key"`
 	Value types.String `tfsdk:"value"`
+}
+
+type secret struct {
+	Key      types.String `tfsdk:"key"`
+	Value    types.String `tfsdk:"value"`
+	SecretId types.String `tfsdk:"secret_id"`
 }
 
 // Metadata returns the resource type name.
@@ -92,7 +99,8 @@ func (r *parametersResource) Schema(_ context.Context, _ resource.SchemaRequest,
 					"the configuration is applied to. If set to false, configuration from parent nodes is ignored.",
 			},
 			"parameters": schema.ListNestedAttribute{
-				Optional: true,
+				Optional:    true,
+				Description: "Parameters is a list of key/value pairs",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"key": schema.StringAttribute{
@@ -100,6 +108,23 @@ func (r *parametersResource) Schema(_ context.Context, _ resource.SchemaRequest,
 						},
 						"value": schema.StringAttribute{
 							Required: true,
+						},
+					},
+				},
+			},
+			"secrets": schema.ListNestedAttribute{
+				Optional:    true,
+				Description: "Secrets is a list of key/value pairs where value is write-only",
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"key": schema.StringAttribute{
+							Required: true,
+						},
+						"value": schema.StringAttribute{
+							Required: true,
+						},
+						"secret_id": schema.StringAttribute{
+							Computed: true,
 						},
 					},
 				},
@@ -206,6 +231,14 @@ func (r *parametersResource) Read(ctx context.Context, req resource.ReadRequest,
 	}
 	state.Parameters = mappedParameters
 
+	mappedSecrets := make([]secret, len(currentParameters.Secrets))
+	for i, s := range currentParameters.Secrets {
+		mappedSecrets[i] = secret{
+			Key:      types.StringValue(s.Key),
+			SecretId: types.StringValue(s.Value),
+		}
+	}
+
 	diags = resp.State.Set(ctx, state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
@@ -279,7 +312,6 @@ func (r *parametersResource) ImportState(ctx context.Context, req resource.Impor
 			fmt.Sprintf("Expected import identifier with format: type:identifier. Got: %q", req.ID),
 		)
 		return
-
 	}
 
 	if configType == "tag" {
@@ -310,6 +342,14 @@ func (r *parametersResource) writeParameters(ctx context.Context, plan parameter
 		}
 	}
 
+	mappedSecrets := make([]config.Parameter, len(plan.Secrets))
+	for i, s := range plan.Secrets {
+		mappedSecrets[i] = config.Parameter{
+			Key:   s.Key.ValueString(),
+			Value: s.Value.ValueString(),
+		}
+	}
+
 	content := config.Parameters{
 		Metadata: config.Metadata{
 			Enabled: true,
@@ -317,6 +357,7 @@ func (r *parametersResource) writeParameters(ctx context.Context, plan parameter
 			Version: "v1",
 		},
 		Parameters: mappedParameters,
+		Secrets:    mappedSecrets,
 	}
 
 	changeRequest, err := createChangeRequest(config.ParametersBundle, content, configType, identifier)
@@ -355,6 +396,52 @@ func (r *parametersResource) writeParameters(ctx context.Context, plan parameter
 		}
 
 		return diags
+	}
+
+	// Since the secrets are write-only, we need to get the secret ids from the created configuration
+	// so we can detect drift in the future
+	if len(plan.Secrets) != 0 {
+		createdConfig, ok := change.Content.(map[string]interface{})["config"].(map[string]interface{})
+		if !ok {
+			return diag.Diagnostics{
+				diag.NewErrorDiagnostic(
+					errorWritingParameters,
+					"error reading the created change content",
+				),
+			}
+		}
+
+		createdSecrets, ok := createdConfig["secrets"].([]interface{})
+		if !ok {
+			return diag.Diagnostics{
+				diag.NewErrorDiagnostic(
+					errorWritingParameters,
+					"error reading the created secrets: 'secrets' is not a list",
+				),
+			}
+		}
+
+		for i, planSecret := range plan.Secrets {
+			var secretId string
+			for _, createdSecret := range createdSecrets {
+				secretKey, _ := createdSecret.(map[string]interface{})["key"]
+				if secretKey == planSecret.Key.ValueString() {
+					secretId, _ = createdSecret.(map[string]interface{})["value"].(string)
+					break
+				}
+			}
+
+			if secretId == "" {
+				return diag.Diagnostics{
+					diag.NewErrorDiagnostic(
+						errorWritingParameters,
+						"error finding the created secret",
+					),
+				}
+			}
+
+			plan.Secrets[i].SecretId = types.StringValue(secretId)
+		}
 	}
 
 	return nil

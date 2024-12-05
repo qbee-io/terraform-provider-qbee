@@ -49,6 +49,12 @@ resource "qbee_parameters" "test" {
       value = "parameter-value-2"
     }
   ]
+  secrets = [
+    {
+      key = "secret-key"
+      value = "secret-value"
+    }
+  ]
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
@@ -60,6 +66,10 @@ resource "qbee_parameters" "test" {
 					resource.TestCheckResourceAttr("qbee_parameters.test", "parameters.0.value", "parameter-value-1"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "parameters.1.key", "parameter-key-2"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "parameters.1.value", "parameter-value-2"),
+					resource.TestCheckResourceAttr("qbee_parameters.test", "secrets.#", "1"),
+					resource.TestCheckResourceAttr("qbee_parameters.test", "secrets.0.key", "secret-key"),
+					resource.TestCheckResourceAttr("qbee_parameters.test", "secrets.0.value", "secret-value"),
+					resource.TestCheckResourceAttrSet("qbee_parameters.test", "secrets.0.secret_id"),
 				),
 			},
 			// Import tag
@@ -69,6 +79,9 @@ resource "qbee_parameters" "test" {
 				ImportStateId:                        "tag:terraform:acctest:parameters",
 				ImportStateVerify:                    true,
 				ImportStateVerifyIdentifierAttribute: "tag",
+				ImportStateVerifyIgnore: []string{
+					"secrets",
+				},
 			},
 			// Update to be for a node
 			{
