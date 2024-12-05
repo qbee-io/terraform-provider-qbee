@@ -122,7 +122,8 @@ func (r *parametersResource) Schema(_ context.Context, _ resource.SchemaRequest,
 							Required: true,
 						},
 						"value": schema.StringAttribute{
-							Required: true,
+							Required:  true,
+							Sensitive: true,
 						},
 						"secret_id": schema.StringAttribute{
 							Computed: true,

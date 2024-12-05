@@ -80,7 +80,7 @@ Required:
 Required:
 
 - `key` (String)
-- `value` (String)
+- `value` (String, Sensitive)
 
 Read-Only:
 
