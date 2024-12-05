@@ -15,19 +15,25 @@ func TestAccSettingsResource(t *testing.T) {
 				Config: providerConfig + `
 resource "qbee_settings" "test" {
   tag = "terraform:acctest:settings"
+  extend = true
   metrics = true
-  agentinterval = 5
+  reports = true
+  remote_console = false
+  software_inventory = true
+  process_inventory = true
+  agent_interval = 5
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_settings.test", "tag", "terraform:acctest:settings"),
 					resource.TestCheckNoResourceAttr("qbee_settings.test", "node"),
+					resource.TestCheckResourceAttr("qbee_settings.test", "extend", "true"),
 					resource.TestCheckResourceAttr("qbee_settings.test", "metrics", "true"),
-					resource.TestCheckResourceAttr("qbee_settings.test", "reports", "false"),
-					resource.TestCheckResourceAttr("qbee_settings.test", "remoteconsole", "false"),
-					resource.TestCheckResourceAttr("qbee_settings.test", "software_inventory", "false"),
-					resource.TestCheckResourceAttr("qbee_settings.test", "process_inventory", "false"),
-					resource.TestCheckResourceAttr("qbee_settings.test", "agentinterval", "5"),
+					resource.TestCheckResourceAttr("qbee_settings.test", "reports", "true"),
+					resource.TestCheckResourceAttr("qbee_settings.test", "remote_console", "false"),
+					resource.TestCheckResourceAttr("qbee_settings.test", "software_inventory", "true"),
+					resource.TestCheckResourceAttr("qbee_settings.test", "process_inventory", "true"),
+					resource.TestCheckResourceAttr("qbee_settings.test", "agent_interval", "5"),
 				),
 			},
 			// Update to a different template
@@ -35,23 +41,25 @@ resource "qbee_settings" "test" {
 				Config: providerConfig + `
 resource "qbee_settings" "test" {
   tag = "terraform:acctest:settings"
+  extend = false
   metrics = true
   reports = true
-  remoteconsole = false
+  remote_console = false
   software_inventory = true
   process_inventory = true
-  agentinterval = 10
+  agent_interval = 10
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_settings.test", "tag", "terraform:acctest:settings"),
 					resource.TestCheckNoResourceAttr("qbee_settings.test", "node"),
+					resource.TestCheckResourceAttr("qbee_settings.test", "extend", "false"),
 					resource.TestCheckResourceAttr("qbee_settings.test", "metrics", "true"),
 					resource.TestCheckResourceAttr("qbee_settings.test", "reports", "true"),
-					resource.TestCheckResourceAttr("qbee_settings.test", "remoteconsole", "true"),
+					resource.TestCheckResourceAttr("qbee_settings.test", "remote_console", "false"),
 					resource.TestCheckResourceAttr("qbee_settings.test", "software_inventory", "true"),
 					resource.TestCheckResourceAttr("qbee_settings.test", "process_inventory", "true"),
-					resource.TestCheckResourceAttr("qbee_settings.test", "agentinterval", "10"),
+					resource.TestCheckResourceAttr("qbee_settings.test", "agent_interval", "10"),
 				),
 			},
 			// Import tag
@@ -67,23 +75,25 @@ resource "qbee_settings" "test" {
 				Config: providerConfig + `
 resource "qbee_settings" "test" {
   node = "integrationtests"
+  extend = true
   metrics = true
   reports = true
-  remoteconsole = false
+  remote_console = true
   software_inventory = true
   process_inventory = true
-  agentinterval = 10
+  agent_interval = 10
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckNoResourceAttr("qbee_settings.test", "tag"),
 					resource.TestCheckResourceAttr("qbee_settings.test", "node", "integrationtests"),
+					resource.TestCheckResourceAttr("qbee_settings.test", "extend", "true"),
 					resource.TestCheckResourceAttr("qbee_settings.test", "metrics", "true"),
 					resource.TestCheckResourceAttr("qbee_settings.test", "reports", "true"),
-					resource.TestCheckResourceAttr("qbee_settings.test", "remoteconsole", "true"),
+					resource.TestCheckResourceAttr("qbee_settings.test", "remote_console", "true"),
 					resource.TestCheckResourceAttr("qbee_settings.test", "software_inventory", "true"),
 					resource.TestCheckResourceAttr("qbee_settings.test", "process_inventory", "true"),
-					resource.TestCheckResourceAttr("qbee_settings.test", "agentinterval", "10"),
+					resource.TestCheckResourceAttr("qbee_settings.test", "agent_interval", "10"),
 				),
 			},
 			// Import node

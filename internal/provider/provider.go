@@ -137,6 +137,7 @@ func (p *QbeeProvider) Resources(ctx context.Context) []func() resource.Resource
 		NewPackageManagementResource,
 		NewPasswordResource,
 		NewRaucResource,
+		NewSettingsResource,
 	}
 }
 
