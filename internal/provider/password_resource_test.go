@@ -15,10 +15,11 @@ func TestAccPasswordResource(t *testing.T) {
 				Config: providerConfig + `
 resource "qbee_password" "test" {
   tag = "terraform:acctest:password"
+  extend = true
   users = [
     {
       username = "testuser"
-      passswordhash = "$5$XyfC.GiB.I8hP8cT$eyBg53DYYuWG5iAdd1Lm8T2rO/tsq0As2jbkK1lTi3D"
+      password_hash = "$5$XyfC.GiB.I8hP8cT$eyBg53DYYuWG5iAdd1Lm8T2rO/tsq0As2jbkK1lTi3D"
     }
   ]
 }
@@ -26,9 +27,10 @@ resource "qbee_password" "test" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_password.test", "tag", "terraform:acctest:password"),
 					resource.TestCheckNoResourceAttr("qbee_password.test", "node"),
+					resource.TestCheckResourceAttr("qbee_password.test", "extend", "true"),
 					resource.TestCheckResourceAttr("qbee_password.test", "users.#", "1"),
 					resource.TestCheckResourceAttr("qbee_password.test", "users.0.username", "testuser"),
-					resource.TestCheckResourceAttr("qbee_password.test", "users.0.passswordhash", "$5$XyfC.GiB.I8hP8cT$eyBg53DYYuWG5iAdd1Lm8T2rO/tsq0As2jbkK1lTi3D"),
+					resource.TestCheckResourceAttr("qbee_password.test", "users.0.password_hash", "$5$XyfC.GiB.I8hP8cT$eyBg53DYYuWG5iAdd1Lm8T2rO/tsq0As2jbkK1lTi3D"),
 				),
 			},
 			// Update to a different template
@@ -36,14 +38,15 @@ resource "qbee_password" "test" {
 				Config: providerConfig + `
 resource "qbee_password" "test" {
   tag = "terraform:acctest:password"
+  extend = true
   users = [
     {
       username = "testuser"
-      passswordhash = "$5$rxiCYTuoljJlNdvd$sD00V.1VO9ePdFkogkTos6mSzQuuZLkjLXxyYAkfjSA"
+      password_hash = "$5$rxiCYTuoljJlNdvd$sD00V.1VO9ePdFkogkTos6mSzQuuZLkjLXxyYAkfjSA"
     },
     {
       username = "seconduser"
-      passswordhash = "$5$C1XMOaIfW1niwc1n$qezUJc1c8UPVQwHkyD7BvF5JLQU8dZ0r6uQ4X4e8IbB"
+      password_hash = "$5$C1XMOaIfW1niwc1n$qezUJc1c8UPVQwHkyD7BvF5JLQU8dZ0r6uQ4X4e8IbB"
     }
   ]
 }
@@ -51,11 +54,12 @@ resource "qbee_password" "test" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_password.test", "tag", "terraform:acctest:password"),
 					resource.TestCheckNoResourceAttr("qbee_password.test", "node"),
+					resource.TestCheckResourceAttr("qbee_password.test", "extend", "true"),
 					resource.TestCheckResourceAttr("qbee_password.test", "users.#", "2"),
 					resource.TestCheckResourceAttr("qbee_password.test", "users.0.username", "testuser"),
-					resource.TestCheckResourceAttr("qbee_password.test", "users.0.passswordhash", "$5$rxiCYTuoljJlNdvd$sD00V.1VO9ePdFkogkTos6mSzQuuZLkjLXxyYAkfjSA"),
+					resource.TestCheckResourceAttr("qbee_password.test", "users.0.password_hash", "$5$rxiCYTuoljJlNdvd$sD00V.1VO9ePdFkogkTos6mSzQuuZLkjLXxyYAkfjSA"),
 					resource.TestCheckResourceAttr("qbee_password.test", "users.1.username", "seconduser"),
-					resource.TestCheckResourceAttr("qbee_password.test", "users.1.passswordhash", "$5$C1XMOaIfW1niwc1n$qezUJc1c8UPVQwHkyD7BvF5JLQU8dZ0r6uQ4X4e8IbB"),
+					resource.TestCheckResourceAttr("qbee_password.test", "users.1.password_hash", "$5$C1XMOaIfW1niwc1n$qezUJc1c8UPVQwHkyD7BvF5JLQU8dZ0r6uQ4X4e8IbB"),
 				),
 			},
 			// Import tag
@@ -71,14 +75,15 @@ resource "qbee_password" "test" {
 				Config: providerConfig + `
 resource "qbee_password" "test" {
   node = "integrationtests"
+  extend = false
   users = [
     {
       username = "testuser"
-      passswordhash = "$5$rxiCYTuoljJlNdvd$sD00V.1VO9ePdFkogkTos6mSzQuuZLkjLXxyYAkfjSA"
+      password_hash = "$5$rxiCYTuoljJlNdvd$sD00V.1VO9ePdFkogkTos6mSzQuuZLkjLXxyYAkfjSA"
     },
     {
       username = "seconduser"
-      passswordhash = "$5$C1XMOaIfW1niwc1n$qezUJc1c8UPVQwHkyD7BvF5JLQU8dZ0r6uQ4X4e8IbB"
+      password_hash = "$5$C1XMOaIfW1niwc1n$qezUJc1c8UPVQwHkyD7BvF5JLQU8dZ0r6uQ4X4e8IbB"
     }
   ]
 }
@@ -86,11 +91,12 @@ resource "qbee_password" "test" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckNoResourceAttr("qbee_password.test", "tag"),
 					resource.TestCheckResourceAttr("qbee_password.test", "node", "integrationtests"),
+					resource.TestCheckResourceAttr("qbee_password.test", "extend", "false"),
 					resource.TestCheckResourceAttr("qbee_password.test", "users.#", "2"),
 					resource.TestCheckResourceAttr("qbee_password.test", "users.0.username", "testuser"),
-					resource.TestCheckResourceAttr("qbee_password.test", "users.0.passswordhash", "$5$rxiCYTuoljJlNdvd$sD00V.1VO9ePdFkogkTos6mSzQuuZLkjLXxyYAkfjSA"),
+					resource.TestCheckResourceAttr("qbee_password.test", "users.0.password_hash", "$5$rxiCYTuoljJlNdvd$sD00V.1VO9ePdFkogkTos6mSzQuuZLkjLXxyYAkfjSA"),
 					resource.TestCheckResourceAttr("qbee_password.test", "users.1.username", "seconduser"),
-					resource.TestCheckResourceAttr("qbee_password.test", "users.1.passswordhash", "$5$C1XMOaIfW1niwc1n$qezUJc1c8UPVQwHkyD7BvF5JLQU8dZ0r6uQ4X4e8IbB"),
+					resource.TestCheckResourceAttr("qbee_password.test", "users.1.password_hash", "$5$C1XMOaIfW1niwc1n$qezUJc1c8UPVQwHkyD7BvF5JLQU8dZ0r6uQ4X4e8IbB"),
 				),
 			},
 			// Import testing
