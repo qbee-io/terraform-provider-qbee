@@ -14,54 +14,54 @@ func TestAccMetricsMonitorResource(t *testing.T) {
 			{
 				Config: providerConfig + `
 resource "qbee_metrics_monitor" "test" {
-  tag = "terraform:acctest:metrics_monitor"
+  tag = "terraform:acctest:metricsmonitor"
   extend = true
   metrics = [
     {
       value = "cpu:user"
-      threshold = 20.0
+      threshold = 20
     }
   ]
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "tag", "terraform:acctest:metrics_monitor"),
+					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "tag", "terraform:acctest:metricsmonitor"),
 					resource.TestCheckNoResourceAttr("qbee_metrics_monitor.test", "node"),
 					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "extend", "true"),
 					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "metrics.#", "1"),
 					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "metrics.0.value", "cpu:user"),
-					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "metrics.0.threshold", "20.0"),
+					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "metrics.0.threshold", "20"),
 				),
 			},
 			// Update to a different template
 			{
 				Config: providerConfig + `
 resource "qbee_metrics_monitor" "test" {
-  tag = "terraform:acctest:metrics_monitor"
+  tag = "terraform:acctest:metricsmonitor"
   extend = false
   metrics = [
     {
       value = "cpu:user"
-      threshold = 30.0
+      threshold = 30
     },
     {
       value = "filesystem:use"
-      threshold = 60.0
+      threshold = 60.5
       id = "/data"
     }
   ]
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "tag", "terraform:acctest:metrics_monitor"),
+					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "tag", "terraform:acctest:metricsmonitor"),
 					resource.TestCheckNoResourceAttr("qbee_metrics_monitor.test", "node"),
 					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "extend", "false"),
 					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "metrics.#", "2"),
 					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "metrics.0.value", "cpu:user"),
-					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "metrics.0.threshold", "30.0"),
+					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "metrics.0.threshold", "30"),
 					resource.TestCheckNoResourceAttr("qbee_metrics_monitor.test", "metrics.0.id"),
 					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "metrics.1.value", "filesystem:use"),
-					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "metrics.1.threshold", "60.0"),
+					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "metrics.1.threshold", "60.5"),
 					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "metrics.1.id", "/data"),
 				),
 			},
@@ -69,7 +69,7 @@ resource "qbee_metrics_monitor" "test" {
 			{
 				ResourceName:                         "qbee_metrics_monitor.test",
 				ImportState:                          true,
-				ImportStateId:                        "tag:terraform:acctest:metrics_monitor",
+				ImportStateId:                        "tag:terraform:acctest:metricsmonitor",
 				ImportStateVerify:                    true,
 				ImportStateVerifyIdentifierAttribute: "tag",
 			},
@@ -82,11 +82,11 @@ resource "qbee_metrics_monitor" "test" {
   metrics = [
     {
       value = "cpu:user"
-      threshold = 30.0
+      threshold = 30
     },
     {
       value = "filesystem:use"
-      threshold = 60.0
+      threshold = 60.2
       id = "/data"
     }
   ]
@@ -98,10 +98,10 @@ resource "qbee_metrics_monitor" "test" {
 					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "extend", "true"),
 					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "metrics.#", "2"),
 					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "metrics.0.value", "cpu:user"),
-					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "metrics.0.threshold", "30.0"),
+					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "metrics.0.threshold", "30"),
 					resource.TestCheckNoResourceAttr("qbee_metrics_monitor.test", "metrics.0.id"),
 					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "metrics.1.value", "filesystem:use"),
-					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "metrics.1.threshold", "60.0"),
+					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "metrics.1.threshold", "60.2"),
 					resource.TestCheckResourceAttr("qbee_metrics_monitor.test", "metrics.1.id", "/data"),
 				),
 			},
