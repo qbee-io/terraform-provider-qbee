@@ -123,23 +123,24 @@ func (p *QbeeProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 
 func (p *QbeeProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		NewFilemanagerFileResource,
-		NewFilemanagerDirectoryResource,
-		NewGrouptreeGroupResource,
-		NewFiledistributionResource,
-		NewSoftwareManagementResource,
-		NewFirewallResource,
 		NewConnectivityWatchdogResource,
-		NewParametersResource,
 		NewDockerContainersResource,
-		NewPodmanContainersResource,
+		NewFiledistributionResource,
+		NewFilemanagerDirectoryResource,
+		NewFilemanagerFileResource,
+		NewFirewallResource,
+		NewGrouptreeGroupResource,
 		NewMetricsMonitorResource,
 		NewPackageManagementResource,
+		NewParametersResource,
 		NewPasswordResource,
+		NewPodmanContainersResource,
+		NewProcessWatchResource,
 		NewRaucResource,
-		NewSettingsResource,
-		NewUsersResource,
 		NewSSHKeysResource,
+		NewSettingsResource,
+		NewSoftwareManagementResource,
+		NewUsersResource,
 	}
 }
 
