@@ -14,49 +14,53 @@ func TestAccPackageManagementResource(t *testing.T) {
 			{
 				Config: providerConfig + `
 resource "qbee_package_management" "test" {
-  tag = "terraform:acctest:package_management"
+  tag = "terraform:acctest:packagemanagement"
+  extend = true
   full_upgrade = true
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_package_management.test", "tag", "terraform:acctest:package_management"),
+					resource.TestCheckResourceAttr("qbee_package_management.test", "tag", "terraform:acctest:packagemanagement"),
 					resource.TestCheckNoResourceAttr("qbee_package_management.test", "node"),
+					resource.TestCheckResourceAttr("qbee_package_management.test", "extend", "true"),
 					resource.TestCheckResourceAttr("qbee_package_management.test", "full_upgrade", "true"),
 					resource.TestCheckNoResourceAttr("qbee_package_management.test", "pre_condition"),
-					resource.TestCheckNoResourceAttr("qbee_package_management.test", "reboot_mode"),
-					resource.TestCheckNoResourceAttr("qbee_package_management.test", "items"),
+					resource.TestCheckResourceAttr("qbee_package_management.test", "reboot_mode", "never"),
+					resource.TestCheckNoResourceAttr("qbee_package_management.test", "packages"),
 				),
 			},
 			// Update to a different template
 			{
 				Config: providerConfig + `
 resource "qbee_package_management" "test" {
-  tag = "terraform:acctest:package_management"
+  tag = "terraform:acctest:packagemanagement"
+  extend = true
   pre_condition = "true"
   reboot_mode = "never"
-  items = [
+  packages = [
 	{
-	  "package": "vim",
+	  "name": "vim",
 	  "version": "9.1",
 	}
   ]
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_package_management.test", "tag", "terraform:acctest:package_management"),
+					resource.TestCheckResourceAttr("qbee_package_management.test", "tag", "terraform:acctest:packagemanagement"),
 					resource.TestCheckNoResourceAttr("qbee_package_management.test", "node"),
+					resource.TestCheckResourceAttr("qbee_package_management.test", "extend", "true"),
 					resource.TestCheckResourceAttr("qbee_package_management.test", "pre_condition", "true"),
 					resource.TestCheckResourceAttr("qbee_package_management.test", "reboot_mode", "never"),
-					resource.TestCheckResourceAttr("qbee_package_management.test", "items.#", "1"),
-					resource.TestCheckResourceAttr("qbee_package_management.test", "items.0.package", "vim"),
-					resource.TestCheckResourceAttr("qbee_package_management.test", "items.0.version", "9.1"),
+					resource.TestCheckResourceAttr("qbee_package_management.test", "packages.#", "1"),
+					resource.TestCheckResourceAttr("qbee_package_management.test", "packages.0.name", "vim"),
+					resource.TestCheckResourceAttr("qbee_package_management.test", "packages.0.version", "9.1"),
 				),
 			},
 			// Import tag
 			{
 				ResourceName:                         "qbee_package_management.test",
 				ImportState:                          true,
-				ImportStateId:                        "tag:terraform:acctest:package_management",
+				ImportStateId:                        "tag:terraform:acctest:packagemanagement",
 				ImportStateVerify:                    true,
 				ImportStateVerifyIdentifierAttribute: "tag",
 			},
@@ -65,10 +69,11 @@ resource "qbee_package_management" "test" {
 				Config: providerConfig + `
 resource "qbee_package_management" "test" {
   node = "integrationtests"
+  extend = true
   reboot_mode = "always"
-  items = [
+  packages = [
 	{
-	  "package": "vim",
+	  "name": "vim",
 	  "version": "9.1",
 	}
   ]
@@ -77,10 +82,11 @@ resource "qbee_package_management" "test" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckNoResourceAttr("qbee_package_management.test", "tag"),
 					resource.TestCheckResourceAttr("qbee_package_management.test", "node", "integrationtests"),
+					resource.TestCheckResourceAttr("qbee_package_management.test", "extend", "true"),
 					resource.TestCheckResourceAttr("qbee_package_management.test", "reboot_mode", "always"),
-					resource.TestCheckResourceAttr("qbee_package_management.test", "items.#", "1"),
-					resource.TestCheckResourceAttr("qbee_package_management.test", "items.0.package", "vim"),
-					resource.TestCheckResourceAttr("qbee_package_management.test", "items.0.version", "9.1"),
+					resource.TestCheckResourceAttr("qbee_package_management.test", "packages.#", "1"),
+					resource.TestCheckResourceAttr("qbee_package_management.test", "packages.0.name", "vim"),
+					resource.TestCheckResourceAttr("qbee_package_management.test", "packages.0.version", "9.1"),
 				),
 			},
 			// Import testing
