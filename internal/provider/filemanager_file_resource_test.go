@@ -22,7 +22,6 @@ resource "qbee_filemanager_file" "test" {
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_filemanager_file.test", "path", "/acctest/filemanager_file/file1.txt"),
-					resource.TestCheckResourceAttr("qbee_filemanager_file.test", "id", "placeholder"),
 					resource.TestMatchResourceAttr("qbee_filemanager_file.test", "file_sha256", regexp.MustCompile("^[a-fA-F0-9]{64}$")),
 				),
 			},
@@ -37,17 +36,17 @@ resource "qbee_filemanager_file" "test" {
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_filemanager_file.test", "path", "/acctest/filemanager_file/alt_filename.txt"),
-					resource.TestCheckResourceAttr("qbee_filemanager_file.test", "id", "placeholder"),
 					resource.TestMatchResourceAttr("qbee_filemanager_file.test", "file_sha256", regexp.MustCompile("^[a-fA-F0-9]{64}$")),
 				),
 			},
 			// Import testing
 			{
-				ResourceName:            "qbee_filemanager_file.test",
-				ImportState:             true,
-				ImportStateId:           "/acctest/filemanager_file/alt_filename.txt",
-				ImportStateVerify:       true,
-				ImportStateVerifyIgnore: []string{"file_hash", "sourcefile"},
+				ResourceName:                         "qbee_filemanager_file.test",
+				ImportState:                          true,
+				ImportStateId:                        "/acctest/filemanager_file/alt_filename.txt",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "path",
+				ImportStateVerifyIgnore:              []string{"file_hash", "sourcefile"},
 			},
 		},
 	})

@@ -37,7 +37,6 @@ resource "qbee_firewall" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_firewall.test", "id", "placeholder"),
 					resource.TestCheckResourceAttr("qbee_firewall.test", "node", "integrationtests"),
 					resource.TestCheckNoResourceAttr("qbee_firewall.test", "tag"),
 					resource.TestCheckResourceAttr("qbee_firewall.test", "extend", "true"),
@@ -73,7 +72,6 @@ resource "qbee_firewall" "test" {
 }
 `,
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("qbee_firewall.test", "id", "placeholder"),
 					resource.TestCheckNoResourceAttr("qbee_firewall.test", "node"),
 					resource.TestCheckResourceAttr("qbee_firewall.test", "tag", "terraform:acctest:firewall"),
 					resource.TestCheckResourceAttr("qbee_firewall.test", "extend", "false"),
@@ -87,10 +85,11 @@ resource "qbee_firewall" "test" {
 			},
 			// Import testing
 			{
-				ResourceName:      "qbee_firewall.test",
-				ImportState:       true,
-				ImportStateId:     "tag:terraform:acctest:firewall",
-				ImportStateVerify: true,
+				ResourceName:                         "qbee_firewall.test",
+				ImportState:                          true,
+				ImportStateId:                        "tag:terraform:acctest:firewall",
+				ImportStateVerify:                    true,
+				ImportStateVerifyIdentifierAttribute: "tag",
 			},
 		},
 	})

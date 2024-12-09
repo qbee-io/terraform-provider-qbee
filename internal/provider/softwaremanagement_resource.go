@@ -14,7 +14,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/qbee-io/terraform-provider-qbee/internal/qbee"
+	"go.qbee.io/client"
+	"go.qbee.io/client/config"
 	"strings"
 )
 
@@ -26,12 +27,19 @@ var (
 	_ resource.ResourceWithImportState      = &softwaremanagementResource{}
 )
 
+const (
+	errorImportingSoftwaremanagement = "error importing softwaremanagement resource"
+	errorWritingSoftwaremanagement   = "error writing softwaremanagement resource"
+	errorReadingSoftwaremanagement   = "error reading softwaremanagement resource"
+	errorDeletingSoftwaremanagement  = "error deleting softwaremanagement resource"
+)
+
 func NewSoftwareManagementResource() resource.Resource {
 	return &softwaremanagementResource{}
 }
 
 type softwaremanagementResource struct {
-	client *qbee.HttpClient
+	client *client.Client
 }
 
 // Metadata returns the resource type name.
@@ -45,18 +53,17 @@ func (r *softwaremanagementResource) Configure(_ context.Context, req resource.C
 		return
 	}
 
-	r.client = req.ProviderData.(*qbee.HttpClient)
+	r.client = req.ProviderData.(*client.Client)
 }
 
 type softwareManagementResourceModel struct {
 	Node   types.String `tfsdk:"node"`
 	Tag    types.String `tfsdk:"tag"`
-	ID     types.String `tfsdk:"id"`
 	Extend types.Bool   `tfsdk:"extend"`
 	Items  types.List   `tfsdk:"items"`
 }
 
-func (m softwareManagementResourceModel) typeAndIdentifier() (qbee.ConfigType, string) {
+func (m softwareManagementResourceModel) typeAndIdentifier() (config.EntityType, string) {
 	return typeAndIdentifier(m.Tag, m.Node)
 }
 
@@ -91,12 +98,44 @@ func (m softwareManagementItemModel) attrTypes() map[string]attr.Type {
 	}
 }
 
+func (m softwareManagementItemModel) toQbeeSoftwarePackage(ctx context.Context) config.SoftwarePackage {
+	var fileModels []softwareManagementItemFile
+	m.ConfigFiles.ElementsAs(ctx, &fileModels, false)
+
+	var files []config.ConfigurationFile
+	for _, model := range fileModels {
+		files = append(files, config.ConfigurationFile{
+			ConfigTemplate: model.Template.ValueString(),
+			ConfigLocation: model.Location.ValueString(),
+		})
+	}
+
+	var parameterModels []softwareManagementItemParameter
+	m.Parameters.ElementsAs(ctx, &parameterModels, false)
+
+	var parameters []config.ConfigurationFileParameter
+	for _, model := range parameterModels {
+		parameters = append(parameters, config.ConfigurationFileParameter{
+			Key:   model.Key.ValueString(),
+			Value: model.Value.ValueString(),
+		})
+	}
+
+	return config.SoftwarePackage{
+		Package:      m.Package.ValueString(),
+		ServiceName:  m.ServiceName.ValueString(),
+		PreCondition: m.PreCondition.ValueString(),
+		ConfigFiles:  files,
+		Parameters:   parameters,
+	}
+}
+
 type softwareManagementItemFile struct {
 	Template types.String `tfsdk:"template"`
 	Location types.String `tfsdk:"location"`
 }
 
-func (_ softwareManagementItemFile) attrTypes() map[string]attr.Type {
+func (f softwareManagementItemFile) attrTypes() map[string]attr.Type {
 	return map[string]attr.Type{
 		"template": types.StringType,
 		"location": types.StringType,
@@ -108,7 +147,7 @@ type softwareManagementItemParameter struct {
 	Value types.String `tfsdk:"value"`
 }
 
-func (_ softwareManagementItemParameter) attrTypes() map[string]attr.Type {
+func (p softwareManagementItemParameter) attrTypes() map[string]attr.Type {
 	return map[string]attr.Type{
 		"key":   types.StringType,
 		"value": types.StringType,
@@ -118,11 +157,8 @@ func (_ softwareManagementItemParameter) attrTypes() map[string]attr.Type {
 // Schema defines the schema for the resource.
 func (r *softwaremanagementResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "SoftwareManagement controls software in the system.",
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:    true,
-				Description: "Placeholder ID value",
-			},
 			"tag": schema.StringAttribute{
 				Optional:      true,
 				Description:   "The tag for which to set the configuration. Either tag or node is required.",
@@ -223,8 +259,6 @@ func (r *softwaremanagementResource) Create(ctx context.Context, req resource.Cr
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ID = types.StringValue("placeholder")
-
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -245,14 +279,60 @@ func (r *softwaremanagementResource) Read(ctx context.Context, req resource.Read
 
 	tflog.Info(ctx, fmt.Sprintf("reading softwaremanagement with identifier %v", state.identifierToString()))
 
+	configType, identifier := state.typeAndIdentifier()
+
+	// Read the real status
+	activeConfig, err := r.client.GetActiveConfig(ctx, configType, identifier, config.EntityConfigScopeOwn)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			errorReadingSoftwaremanagement,
+			"error reading the active configuration: "+err.Error(),
+		)
+
+		return
+	}
+
 	// Update the current state
-	diags = r.readSoftwareManagement(ctx, &state, resp)
+	currentSoftwareManagement := activeConfig.BundleData.SoftwareManagement
+	if currentSoftwareManagement == nil {
+		resp.State.RemoveResource(ctx)
+		return
+	}
+
+	state.Extend = types.BoolValue(currentSoftwareManagement.Extend)
+
+	var items []softwareManagementItemModel
+	for _, softwarePackage := range currentSoftwareManagement.Items {
+		value, diags := readSoftwarePackage(ctx, softwarePackage)
+		if diags.HasError() {
+			resp.Diagnostics.Append(diags...)
+			return
+		}
+
+		items = append(items, *value)
+	}
+
+	if len(items) == 0 {
+		state.Items = types.ListNull(
+			basetypes.ObjectType{
+				AttrTypes: softwareManagementItemModel{}.attrTypes(),
+			},
+		)
+	} else {
+		var itemsValue types.List
+		itemsValue, diags = types.ListValueFrom(
+			ctx,
+			basetypes.ObjectType{
+				AttrTypes: softwareManagementItemModel{}.attrTypes(),
+			},
+			items,
+		)
+		state.Items = itemsValue
+	}
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-
-	state.ID = types.StringValue("placeholder")
 
 	resp.State.Set(ctx, state)
 }
@@ -276,8 +356,6 @@ func (r *softwaremanagementResource) Update(ctx context.Context, req resource.Up
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ID = types.StringValue("placeholder")
-
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -298,25 +376,45 @@ func (r *softwaremanagementResource) Delete(ctx context.Context, req resource.De
 
 	// Delete the resource
 	configType, identifier := typeAndIdentifier(state.Tag, state.Node)
-	tflog.Info(ctx, fmt.Sprintf("Deleting softwaremanagement for %v %v", configType.String(), identifier))
+	tflog.Info(ctx, fmt.Sprintf("Deleting softwaremanagement for %v %v", configType, identifier))
 
-	deleteResponse, err := r.client.SoftwareManagement.Clear(configType, identifier)
+	content := config.SoftwareManagement{
+		Metadata: config.Metadata{
+			Version: "v1",
+			Reset:   true,
+		},
+	}
+
+	changeRequest, err := createChangeRequest(config.SoftwareManagementBundle, content, configType, identifier)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error deleting softwaremanagement",
-			"could not delete softwaremanagement, unexpected error: "+err.Error())
+			errorDeletingSoftwaremanagement,
+			err.Error())
 		return
 	}
 
-	_, err = r.client.Configuration.Commit("terraform: create filedistribution_resource")
+	change, err := r.client.CreateConfigurationChange(ctx, changeRequest)
 	if err != nil {
-		resp.Diagnostics.AddError("Could not commit deletion of softwaremanagement",
-			"error creating a commit to delete the softwaremanagement resource: "+err.Error())
+		resp.Diagnostics.AddError(
+			errorDeletingSoftwaremanagement,
+			"could not delete softwaremanagement, unexpected error: "+err.Error(),
+		)
+		return
+	}
 
-		err = r.client.Configuration.DeleteUncommitted(deleteResponse.Sha)
+	_, err = r.client.CommitConfiguration(ctx, "terraform: create softwaremanagement_resource")
+	if err != nil {
+		resp.Diagnostics.AddError(
+			errorDeletingSoftwaremanagement,
+			"error creating a commit to delete the softwaremanagement resource: "+err.Error(),
+		)
+
+		err = r.client.DeleteConfigurationChange(ctx, change.SHA)
 		if err != nil {
-			resp.Diagnostics.AddError("Could not revert uncommitted softwaremanagement changes",
-				"error deleting uncommitted softwaremanagement changes: "+err.Error())
+			resp.Diagnostics.AddError(
+				errorDeletingSoftwaremanagement,
+				"error deleting uncommitted softwaremanagement changes: "+err.Error(),
+			)
 		}
 
 		return
@@ -327,7 +425,7 @@ func (r *softwaremanagementResource) ImportState(ctx context.Context, req resour
 	configType, identifier, found := strings.Cut(req.ID, ":")
 	if !found || configType == "" || identifier == "" {
 		resp.Diagnostics.AddError(
-			"Unexpected Import Identifier",
+			errorImportingSoftwaremanagement,
 			fmt.Sprintf("Expected import identifier with format: type:identifier. Got: %q", req.ID),
 		)
 		return
@@ -342,7 +440,7 @@ func (r *softwaremanagementResource) ImportState(ctx context.Context, req resour
 		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("node"), identifier)...)
 	} else {
 		resp.Diagnostics.AddError(
-			"Unexpected Import Identifier",
+			errorImportingSoftwaremanagement,
 			fmt.Sprintf("Import type must be either 'node' or 'tag'. Got: %q", configType),
 		)
 		return
@@ -359,131 +457,65 @@ func (r *softwaremanagementResource) writeSoftwareManagement(ctx context.Context
 		return diags
 	}
 
-	var items []qbee.SoftwareManagementItem
+	var items []config.SoftwarePackage
 	for _, model := range itemModels {
-		items = append(items, model.toQbeeItem(ctx))
+		items = append(items, model.toQbeeSoftwarePackage(ctx))
 	}
 
 	// Create the resource
-	tflog.Info(ctx, fmt.Sprintf("Creating softwaremanagement for %v %v with %v items", configType.String(), identifier, len(items)))
-	createResponse, err := r.client.SoftwareManagement.Create(configType, identifier, items, extend)
+	tflog.Info(ctx, fmt.Sprintf("Creating softwaremanagement for %v %v with %v items", configType, identifier, len(items)))
+
+	content := config.SoftwareManagement{
+		Metadata: config.Metadata{
+			Enabled: true,
+			Extend:  extend,
+			Version: "v1",
+		},
+		Items: items,
+	}
+
+	changeRequest, err := createChangeRequest(config.SoftwareManagementBundle, content, configType, identifier)
 	if err != nil {
 		return diag.Diagnostics{
 			diag.NewErrorDiagnostic(
-				"error creating a softwaremanagement resource",
+				errorWritingSoftwaremanagement,
 				err.Error(),
 			),
 		}
 	}
 
-	_, err = r.client.Configuration.Commit("terraform: create softwaremanagement_resource")
+	change, err := r.client.CreateConfigurationChange(ctx, changeRequest)
 	if err != nil {
-		err = fmt.Errorf("error creating a commit for the softwaremanagement: %w", err)
-
-		err = r.client.Configuration.DeleteUncommitted(createResponse.Sha)
-		if err != nil {
-			err = fmt.Errorf("error deleting uncommitted softwaremanagement changes: %w", err)
-		}
-
 		return diag.Diagnostics{
-			diag.NewErrorDiagnostic("error creating a softwaremanagement resource", err.Error()),
+			diag.NewErrorDiagnostic(
+				errorWritingSoftwaremanagement,
+				err.Error(),
+			),
 		}
+	}
+
+	_, err = r.client.CommitConfiguration(ctx, "terraform: create softwaremanagement_resource")
+	if err != nil {
+		diags = diag.Diagnostics{}
+
+		err = fmt.Errorf("error creating a commit for the softwaremanagement: %w", err)
+		diags.AddError(errorWritingSoftwaremanagement, err.Error())
+
+		err = r.client.DeleteConfigurationChange(ctx, change.SHA)
+		if err != nil {
+			diags.AddError(
+				errorWritingSoftwaremanagement,
+				fmt.Errorf("could not delete uncommitted softwaremanagement changes: %w", err).Error(),
+			)
+		}
+
+		return diags
 	}
 
 	return nil
 }
 
-func (m softwareManagementItemModel) toQbeeItem(ctx context.Context) qbee.SoftwareManagementItem {
-	var fileModels []softwareManagementItemFile
-	m.ConfigFiles.ElementsAs(ctx, &fileModels, false)
-
-	var files []qbee.SoftwareManagementConfigFile
-	for _, model := range fileModels {
-		files = append(files, model.toQbeeItem())
-	}
-
-	var parameterModels []softwareManagementItemParameter
-	m.Parameters.ElementsAs(ctx, &parameterModels, false)
-
-	var parameters []qbee.SoftwareManagementParameter
-	for _, model := range parameterModels {
-		parameters = append(parameters, model.toQbeeItem())
-	}
-
-	return qbee.SoftwareManagementItem{
-		Package:      m.Package.ValueString(),
-		ServiceName:  m.ServiceName.ValueString(),
-		PreCondition: m.PreCondition.ValueString(),
-		ConfigFiles:  files,
-		Parameters:   parameters,
-	}
-}
-
-func (f softwareManagementItemFile) toQbeeItem() qbee.SoftwareManagementConfigFile {
-	return qbee.SoftwareManagementConfigFile{
-		ConfigTemplate: f.Template.ValueString(),
-		ConfigLocation: f.Location.ValueString(),
-	}
-}
-
-func (p softwareManagementItemParameter) toQbeeItem() qbee.SoftwareManagementParameter {
-	return qbee.SoftwareManagementParameter{
-		Key:   p.Key.ValueString(),
-		Value: p.Value.ValueString(),
-	}
-}
-
-func (r *softwaremanagementResource) readSoftwareManagement(ctx context.Context, state *softwareManagementResourceModel, resp *resource.ReadResponse) diag.Diagnostics {
-	configType, identifier := state.typeAndIdentifier()
-
-	// Read the real status
-	currentState, err := r.client.SoftwareManagement.Get(configType, identifier)
-	if err != nil {
-		return diag.Diagnostics{
-			diag.NewErrorDiagnostic("error reading softwaremanagement state", err.Error()),
-		}
-	}
-
-	if currentState == nil {
-		resp.State.RemoveResource(ctx)
-		return nil
-	}
-
-	state.Extend = types.BoolValue(currentState.Extend)
-
-	var items []softwareManagementItemModel
-	for _, item := range currentState.SoftwareItems {
-		value, diags := fromQbeeItem(ctx, item)
-		if diags.HasError() {
-			return diags
-		}
-
-		items = append(items, *value)
-	}
-
-	var diags diag.Diagnostics
-	if len(items) == 0 {
-		state.Items = types.ListNull(
-			basetypes.ObjectType{
-				AttrTypes: softwareManagementItemModel{}.attrTypes(),
-			},
-		)
-	} else {
-		var itemsValue types.List
-		itemsValue, diags = types.ListValueFrom(
-			ctx,
-			basetypes.ObjectType{
-				AttrTypes: softwareManagementItemModel{}.attrTypes(),
-			},
-			items,
-		)
-		state.Items = itemsValue
-	}
-
-	return diags
-}
-
-func fromQbeeItem(ctx context.Context, item qbee.SoftwareManagementItem) (*softwareManagementItemModel, diag.Diagnostics) {
+func readSoftwarePackage(ctx context.Context, item config.SoftwarePackage) (*softwareManagementItemModel, diag.Diagnostics) {
 	var configFiles []softwareManagementItemFile
 	for _, file := range item.ConfigFiles {
 		configFiles = append(configFiles, softwareManagementItemFile{

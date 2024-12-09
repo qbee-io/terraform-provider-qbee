@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/qbee-io/terraform-provider-qbee/internal/qbee"
+	"go.qbee.io/client"
 	"os"
 )
 
@@ -108,8 +108,8 @@ func (p *QbeeProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		return
 	}
 
-	client, err := qbee.NewClient(username, password)
-
+	qbeeClient := client.New()
+	err := qbeeClient.Authenticate(ctx, username, password)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to create Qbee API Client",
@@ -117,18 +117,30 @@ func (p *QbeeProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		return
 	}
 
-	resp.DataSourceData = client
-	resp.ResourceData = client
+	resp.DataSourceData = qbeeClient
+	resp.ResourceData = qbeeClient
 }
 
 func (p *QbeeProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		NewFilemanagerFileResource,
-		NewFilemanagerDirectoryResource,
-		NewGrouptreeGroupResource,
+		NewConnectivityWatchdogResource,
+		NewDockerContainersResource,
 		NewFiledistributionResource,
-		NewSoftwareManagementResource,
+		NewFilemanagerDirectoryResource,
+		NewFilemanagerFileResource,
 		NewFirewallResource,
+		NewGrouptreeGroupResource,
+		NewMetricsMonitorResource,
+		NewPackageManagementResource,
+		NewParametersResource,
+		NewPasswordResource,
+		NewPodmanContainersResource,
+		NewProcessWatchResource,
+		NewRaucResource,
+		NewSSHKeysResource,
+		NewSettingsResource,
+		NewSoftwareManagementResource,
+		NewUsersResource,
 	}
 }
 

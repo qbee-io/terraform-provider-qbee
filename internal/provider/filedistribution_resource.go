@@ -12,7 +12,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/qbee-io/terraform-provider-qbee/internal/qbee"
+	"go.qbee.io/client"
+	"go.qbee.io/client/config"
 	"strings"
 )
 
@@ -24,12 +25,19 @@ var (
 	_ resource.ResourceWithImportState      = &filedistributionResource{}
 )
 
+const (
+	errorImportingFiledistribution = "error importing filedistribution resource"
+	errorWritingFiledistribution   = "error writing filedistribution resource"
+	errorReadingFiledistribution   = "error reading filedistribution resource"
+	errorDeletingFiledistribution  = "error deleting filedistribution resource"
+)
+
 func NewFiledistributionResource() resource.Resource {
 	return &filedistributionResource{}
 }
 
 type filedistributionResource struct {
-	client *qbee.HttpClient
+	client *client.Client
 }
 
 // Metadata returns the resource type name.
@@ -43,17 +51,14 @@ func (r *filedistributionResource) Configure(_ context.Context, req resource.Con
 		return
 	}
 
-	r.client = req.ProviderData.(*qbee.HttpClient)
+	r.client = req.ProviderData.(*client.Client)
 }
 
 // Schema defines the schema for the resource.
 func (r *filedistributionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "Defines a file set to be maintained in the system.",
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:    true,
-				Description: "Placeholder ID value",
-			},
 			"tag": schema.StringAttribute{
 				Optional:      true,
 				Description:   "The tag for which to set the configuration. Either tag or node is required.",
@@ -71,11 +76,16 @@ func (r *filedistributionResource) Schema(_ context.Context, _ resource.SchemaRe
 			},
 			"files": schema.ListNestedAttribute{
 				Required:    true,
-				Description: "The filesets that must be distributed",
+				Description: "The filesets to distribute.",
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
+						"label": schema.StringAttribute{
+							Optional:    true,
+							Description: "An optional label for the fileset.",
+						},
 						"templates": schema.ListNestedAttribute{
-							Required: true,
+							Required:    true,
+							Description: "Defines files to be created in the filesystem.",
 							NestedObject: schema.NestedAttributeObject{
 								Attributes: map[string]schema.Attribute{
 									"source": schema.StringAttribute{
@@ -97,14 +107,17 @@ func (r *filedistributionResource) Schema(_ context.Context, _ resource.SchemaRe
 							},
 						},
 						"parameters": schema.ListNestedAttribute{
-							Optional: true,
+							Optional:    true,
+							Description: "Define values to be used for template files.",
 							NestedObject: schema.NestedAttributeObject{
 								Attributes: map[string]schema.Attribute{
 									"key": schema.StringAttribute{
-										Required: true,
+										Description: "Key of the parameter used in files.",
+										Required:    true,
 									},
 									"value": schema.StringAttribute{
-										Required: true,
+										Description: "Value of the parameter which will replace Key placeholders.",
+										Required:    true,
 									},
 								},
 							},
@@ -138,23 +151,50 @@ func (r *filedistributionResource) ConfigValidators(ctx context.Context) []resou
 type filedistributionResourceModel struct {
 	Node   types.String `tfsdk:"node"`
 	Tag    types.String `tfsdk:"tag"`
-	ID     types.String `tfsdk:"id"`
 	Extend types.Bool   `tfsdk:"extend"`
 	Files  []file       `tfsdk:"files"`
 }
 
-func (m filedistributionResourceModel) typeAndIdentifier() (qbee.ConfigType, string) {
+func (m filedistributionResourceModel) typeAndIdentifier() (config.EntityType, string) {
 	return typeAndIdentifier(m.Tag, m.Node)
 }
 
 type file struct {
-	Command      types.String `tfsdk:"command"`
-	PreCondition types.String `tfsdk:"pre_condition"`
-	Templates    []template   `tfsdk:"templates"`
-	Parameters   []parameter  `tfsdk:"parameters"`
+	Label        types.String        `tfsdk:"label"`
+	Command      types.String        `tfsdk:"command"`
+	PreCondition types.String        `tfsdk:"pre_condition"`
+	Templates    []template          `tfsdk:"templates"`
+	Parameters   []templateParameter `tfsdk:"parameters"`
 }
 
-type parameter struct {
+func (f file) toQbeeFileSet() config.FileSet {
+	var files []config.File
+	for _, t := range f.Templates {
+		files = append(files, config.File{
+			Source:      t.Source.ValueString(),
+			Destination: t.Destination.ValueString(),
+			IsTemplate:  t.IsTemplate.ValueBool(),
+		})
+	}
+
+	var templateParameters []config.TemplateParameter
+	for _, p := range f.Parameters {
+		templateParameters = append(templateParameters, config.TemplateParameter{
+			Key:   p.Key.ValueString(),
+			Value: p.Value.ValueString(),
+		})
+	}
+
+	return config.FileSet{
+		Label:              f.Label.ValueString(),
+		AfterCommand:       f.Command.ValueString(),
+		PreCondition:       f.PreCondition.ValueString(),
+		Files:              files,
+		TemplateParameters: templateParameters,
+	}
+}
+
+type templateParameter struct {
 	Key   types.String `tfsdk:"key"`
 	Value types.String `tfsdk:"value"`
 }
@@ -182,8 +222,6 @@ func (r *filedistributionResource) Create(ctx context.Context, req resource.Crea
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ID = types.StringValue("placeholder")
-
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -209,8 +247,6 @@ func (r *filedistributionResource) Update(ctx context.Context, req resource.Upda
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ID = types.StringValue("placeholder")
-
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -220,62 +256,61 @@ func (r *filedistributionResource) Update(ctx context.Context, req resource.Upda
 }
 
 func (r *filedistributionResource) writeFiledistribution(ctx context.Context, plan filedistributionResourceModel) diag.Diagnostics {
-	var diags diag.Diagnostics
-
 	configType, identifier := plan.typeAndIdentifier()
 	extend := plan.Extend.ValueBool()
 
-	var mappedFiles []qbee.FiledistributionFile
+	var filesets []config.FileSet
 	for _, f := range plan.Files {
-		var mappedTemplates []qbee.FiledistributionTemplate
-		for _, t := range f.Templates {
-			mappedTemplates = append(mappedTemplates, qbee.FiledistributionTemplate{
-				Source:      t.Source.ValueString(),
-				Destination: t.Destination.ValueString(),
-				IsTemplate:  t.IsTemplate.ValueBool(),
-			})
-		}
-
-		var mappedParameters []qbee.FiledistributionParameter
-		for _, p := range f.Parameters {
-			mappedParameters = append(mappedParameters, qbee.FiledistributionParameter{
-				Key:   p.Key.ValueString(),
-				Value: p.Value.ValueString(),
-			})
-		}
-
-		mappedFiles = append(mappedFiles, qbee.FiledistributionFile{
-			Command:      f.Command.ValueString(),
-			PreCondition: f.PreCondition.ValueString(),
-			Templates:    mappedTemplates,
-			Parameters:   mappedParameters,
-		})
+		filesets = append(filesets, f.toQbeeFileSet())
 	}
 
 	// Create the resource
-	tflog.Info(ctx, fmt.Sprintf("Creating file distribution for %v %v with %v filesets", configType.String(), identifier, len(mappedFiles)))
-	createResponse, err := r.client.FileDistribution.Create(configType, identifier, mappedFiles, extend)
-	if err != nil {
-		diags.AddError(
-			"Error creating filedistribution",
-			fmt.Sprintf("Error creating a filedistribution resource with qbee: %v", err),
-		)
-		return diags
+	tflog.Info(ctx, fmt.Sprintf("Creating file distribution for %v %v with %v filesets", configType, identifier, len(filesets)))
+
+	content := config.FileDistribution{
+		Metadata: config.Metadata{
+			Enabled: true,
+			Extend:  extend,
+			Version: "v1",
+		},
+		FileSets: filesets,
 	}
 
-	_, err = r.client.Configuration.Commit("terraform: create filedistribution_resource")
+	changeRequest, err := createChangeRequest(config.FileDistributionBundle, content, configType, identifier)
 	if err != nil {
-		err = fmt.Errorf("error creating a commit for the filedistribution: %w", err)
+		return diag.Diagnostics{
+			diag.NewErrorDiagnostic(
+				errorWritingFiledistribution,
+				err.Error(),
+			),
+		}
+	}
 
-		err = r.client.Configuration.DeleteUncommitted(createResponse.Sha)
+	change, err := r.client.CreateConfigurationChange(ctx, changeRequest)
+	if err != nil {
+		return diag.Diagnostics{
+			diag.NewErrorDiagnostic(
+				errorWritingFiledistribution,
+				fmt.Sprintf("Error creating a filedistribution resource with qbee: %v", err),
+			),
+		}
+	}
+
+	_, err = r.client.CommitConfiguration(ctx, "terraform: create filedistribution_resource")
+	if err != nil {
+		diags := diag.Diagnostics{}
+
+		err = fmt.Errorf("error creating a commit for the filedistribution: %w", err)
+		diags.AddError(errorWritingFiledistribution, err.Error())
+
+		err = r.client.DeleteConfigurationChange(ctx, change.SHA)
 		if err != nil {
-			err = fmt.Errorf("error deleting uncommitted filedistribution changes: %w", err)
+			diags.AddError(
+				errorWritingFiledistribution,
+				fmt.Errorf("error deleting uncommitted filedistribution changes: %w", err).Error(),
+			)
 		}
 
-		diags.AddError(
-			"Error creating firewall",
-			fmt.Sprintf("Error while committing firewall change: %v", err),
-		)
 		return diags
 	}
 
@@ -295,24 +330,25 @@ func (r *filedistributionResource) Read(ctx context.Context, req resource.ReadRe
 	configType, identifier := state.typeAndIdentifier()
 
 	// Read the real status
-	currentFiledistribution, err := r.client.FileDistribution.Get(configType, identifier)
+	activeConfig, err := r.client.GetActiveConfig(ctx, configType, identifier, config.EntityConfigScopeOwn)
 	if err != nil {
-		resp.Diagnostics.AddError("Could not read filedistribution",
-			"error reading the filedistribution resource: "+err.Error())
+		resp.Diagnostics.AddError(errorReadingFiledistribution,
+			"error reading the active configuration: "+err.Error())
 
 		return
 	}
 
+	// Update the current state
+	currentFiledistribution := activeConfig.BundleData.FileDistribution
 	if currentFiledistribution == nil {
 		resp.State.RemoveResource(ctx)
 		return
 	}
 
-	// Update the current state
 	var files []file
-	for _, f := range currentFiledistribution.FiledistributionFiles {
+	for _, f := range currentFiledistribution.FileSets {
 		var templates []template
-		for _, t := range f.Templates {
+		for _, t := range f.Files {
 			templates = append(templates, template{
 				Source:      types.StringValue(t.Source),
 				Destination: types.StringValue(t.Destination),
@@ -320,19 +356,26 @@ func (r *filedistributionResource) Read(ctx context.Context, req resource.ReadRe
 			})
 		}
 
-		var parameters []parameter
-		for _, p := range f.Parameters {
-			parameters = append(parameters, parameter{
+		var parameters []templateParameter
+		for _, p := range f.TemplateParameters {
+			parameters = append(parameters, templateParameter{
 				Key:   types.StringValue(p.Key),
 				Value: types.StringValue(p.Value),
 			})
 		}
 
+		var label types.String
+		if f.Label == "" {
+			label = types.StringNull()
+		} else {
+			label = types.StringValue(f.Label)
+		}
+
 		var command types.String
-		if f.Command == "" {
+		if f.AfterCommand == "" {
 			command = types.StringNull()
 		} else {
-			command = types.StringValue(f.Command)
+			command = types.StringValue(f.AfterCommand)
 		}
 
 		var precondition types.String
@@ -343,6 +386,7 @@ func (r *filedistributionResource) Read(ctx context.Context, req resource.ReadRe
 		}
 
 		files = append(files, file{
+			Label:        label,
 			Command:      command,
 			PreCondition: precondition,
 			Templates:    templates,
@@ -350,7 +394,6 @@ func (r *filedistributionResource) Read(ctx context.Context, req resource.ReadRe
 		})
 	}
 
-	state.ID = types.StringValue("placeholder")
 	state.Extend = types.BoolValue(currentFiledistribution.Extend)
 	state.Files = files
 
@@ -373,25 +416,45 @@ func (r *filedistributionResource) Delete(ctx context.Context, req resource.Dele
 
 	// Delete the resource
 	configType, identifier := state.typeAndIdentifier()
-	tflog.Info(ctx, fmt.Sprintf("Deleting filedistribution for %v %v", configType.String(), identifier))
+	tflog.Info(ctx, fmt.Sprintf("Deleting filedistribution for %v %v", configType, identifier))
 
-	deleteResponse, err := r.client.FileDistribution.Clear(configType, identifier)
+	content := config.FileDistribution{
+		Metadata: config.Metadata{
+			Reset:   true,
+			Version: "v1",
+		},
+	}
+
+	changeRequest, err := createChangeRequest(config.FileDistributionBundle, content, configType, identifier)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Error deleting filedistribution",
-			"could not delete filedistribution, unexpected error: "+err.Error())
+			errorDeletingFiledistribution,
+			err.Error(),
+		)
 		return
 	}
 
-	_, err = r.client.Configuration.Commit("terraform: create filedistribution_resource")
+	change, err := r.client.CreateConfigurationChange(ctx, changeRequest)
 	if err != nil {
-		resp.Diagnostics.AddError("Could not commit deletion of filedistribution",
-			"error creating a commit to delete the filedistribution resource: "+err.Error())
+		resp.Diagnostics.AddError(
+			errorDeletingFiledistribution,
+			err.Error(),
+		)
+		return
+	}
 
-		err = r.client.Configuration.DeleteUncommitted(deleteResponse.Sha)
+	_, err = r.client.CommitConfiguration(ctx, "terraform: create filedistribution_resource")
+	if err != nil {
+		resp.Diagnostics.AddError(errorDeletingFiledistribution,
+			"error creating a commit to delete the filedistribution resource: "+err.Error(),
+		)
+
+		err = r.client.DeleteConfigurationChange(ctx, change.SHA)
 		if err != nil {
-			resp.Diagnostics.AddError("Could not revert uncommitted filedistribution changes",
-				"error deleting uncommitted filedistribution changes: "+err.Error())
+			resp.Diagnostics.AddError(
+				errorDeletingFiledistribution,
+				"error deleting uncommitted filedistribution changes: "+err.Error(),
+			)
 		}
 
 		return
@@ -402,7 +465,7 @@ func (r *filedistributionResource) ImportState(ctx context.Context, req resource
 	configType, identifier, found := strings.Cut(req.ID, ":")
 	if !found || configType == "" || identifier == "" {
 		resp.Diagnostics.AddError(
-			"Unexpected Import Identifier",
+			errorImportingFiledistribution,
 			fmt.Sprintf("Expected import identifier with format: type:identifier. Got: %q", req.ID),
 		)
 		return
@@ -415,7 +478,7 @@ func (r *filedistributionResource) ImportState(ctx context.Context, req resource
 		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("node"), identifier)...)
 	} else {
 		resp.Diagnostics.AddError(
-			"Unexpected Import Identifier",
+			errorImportingFiledistribution,
 			fmt.Sprintf("Import type must be either 'node' or 'tag'. Got: %q", configType),
 		)
 		return

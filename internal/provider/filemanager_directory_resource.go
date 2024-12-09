@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -11,8 +10,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/qbee-io/terraform-provider-qbee/internal/qbee"
+	"go.qbee.io/client"
 	"path/filepath"
+	"strings"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -27,7 +27,7 @@ func NewFilemanagerDirectoryResource() resource.Resource {
 }
 
 type filemanagerDirectoryResource struct {
-	client *qbee.HttpClient
+	client *client.Client
 }
 
 // Configure adds the provider configured client to the resource.
@@ -36,7 +36,7 @@ func (r *filemanagerDirectoryResource) Configure(_ context.Context, req resource
 		return
 	}
 
-	r.client = req.ProviderData.(*qbee.HttpClient)
+	r.client = req.ProviderData.(*client.Client)
 }
 
 // Metadata returns the resource type name.
@@ -47,11 +47,8 @@ func (r *filemanagerDirectoryResource) Metadata(_ context.Context, req resource.
 // Schema defines the schema for the resource.
 func (r *filemanagerDirectoryResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Description: "The filemanager_directory resource allows you to create and manage directories in the file manager.",
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed:    true,
-				Description: "Placeholder ID value",
-			},
 			"path": schema.StringAttribute{
 				Required:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
@@ -62,7 +59,6 @@ func (r *filemanagerDirectoryResource) Schema(_ context.Context, _ resource.Sche
 }
 
 type filemanagerDirectoryResourceModel struct {
-	ID   types.String `tfsdk:"id"`
 	Path types.String `tfsdk:"path"`
 }
 
@@ -82,7 +78,8 @@ func (r *filemanagerDirectoryResource) Create(ctx context.Context, req resource.
 	pathParent := filepath.Dir(pathCleaned)
 	pathName := filepath.Base(pathCleaned)
 	tflog.Info(ctx, fmt.Sprintf("Creating filemanager directory %v/%v", pathParent, pathName))
-	_, err := r.client.Files.CreateDir(pathParent, pathName)
+
+	err := r.client.CreateDirectory(ctx, pathParent, pathName)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error creating filemanager_directory",
@@ -91,8 +88,6 @@ func (r *filemanagerDirectoryResource) Create(ctx context.Context, req resource.
 	}
 
 	// Map response body to schema and populate Computed attribute values
-	plan.ID = types.StringValue("placeholder")
-
 	// Set state to fully populated data
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -114,30 +109,28 @@ func (r *filemanagerDirectoryResource) Read(ctx context.Context, req resource.Re
 	// Get the refreshed directory value from Qbee
 	directoryPath := state.Path.ValueString()
 
-	listFilesResponse, err := r.client.Files.GetMetadata(directoryPath)
-
-	// If the directory is not found, we have drift, and it was deleted from qbee
-	if errors.Is(err, qbee.ErrFileNotFound) {
-		resp.State.RemoveResource(ctx)
-		return
-	}
-
-	// Any other error is unexpected
+	metadata, err := r.client.GetFileMetadata(ctx, directoryPath)
 	if err != nil {
-		resp.Diagnostics.AddError(
-			"Error reading Qbee Filemanager data",
-			"Could not read Filemanager data from Qbee: "+err.Error())
+		if strings.HasSuffix(err.Error(), "404") {
+			// If the directory is not found, we have drift, and it was deleted from qbee
+			resp.State.RemoveResource(ctx)
+		} else {
+			// Any other error is unexpected
+			resp.Diagnostics.AddError(
+				"Error reading Qbee Filemanager data",
+				"Could not read Filemanager data from Qbee: "+err.Error())
+		}
+
 		return
 	}
 
 	// Delete from the state if it no longer exists
-	if !listFilesResponse.IsDir {
+	if !metadata.IsDir {
 		resp.State.RemoveResource(ctx)
 		return
 	}
 
 	// Update the state
-	state.ID = types.StringValue("placeholder")
 	state.Path = types.StringValue(directoryPath)
 	resp.State.Set(ctx, state)
 }
@@ -164,7 +157,7 @@ func (r *filemanagerDirectoryResource) Delete(ctx context.Context, req resource.
 	directoryPath := state.Path.ValueString()
 	tflog.Info(ctx, fmt.Sprintf("Deleting filemanager directory '%v'", directoryPath))
 
-	err := r.client.Files.Delete(directoryPath)
+	err := r.client.DeleteFile(ctx, directoryPath)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Error deleting filemanager_directory",
@@ -175,7 +168,5 @@ func (r *filemanagerDirectoryResource) Delete(ctx context.Context, req resource.
 
 func (r *filemanagerDirectoryResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	cleanPath := filepath.Clean(req.ID)
-
-	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), "placeholder")...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("path"), cleanPath)...)
 }

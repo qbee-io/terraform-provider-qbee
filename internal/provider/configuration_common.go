@@ -6,20 +6,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	"github.com/qbee-io/terraform-provider-qbee/internal/qbee"
+	"go.qbee.io/client/config"
 )
 
-func typeAndIdentifier(tag types.String, node types.String) (qbee.ConfigType, string) {
-	var configType qbee.ConfigType
-	var identifier string
+func typeAndIdentifier(tag types.String, node types.String) (config.EntityType, string) {
 	if tag.IsNull() {
-		configType = qbee.ConfigForNode
-		identifier = node.ValueString()
+		return config.EntityTypeNode, node.ValueString()
 	} else {
-		configType = qbee.ConfigForTag
-		identifier = tag.ValueString()
+		return config.EntityTypeTag, tag.ValueString()
 	}
-	return configType, identifier
 }
 
 func nullableStringValue(value string) basetypes.StringValue {
