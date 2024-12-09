@@ -1,4 +1,4 @@
-module github.com/qbee-io/terraform-provider-qbee
+module go.qbee.io/terraform
 
 go 1.22.7
 

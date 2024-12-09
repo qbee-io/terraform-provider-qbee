@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
-	"github.com/qbee-io/terraform-provider-qbee/internal/provider"
+	"go.qbee.io/terraform/internal/provider"
 )
 
 // Run "go generate" to format example terraform files and generate the docs for the registry/website
@@ -35,7 +35,7 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		Address: "github.com/qbee-io/terraform-provider-qbee",
+		Address: "go.qbee.io/terraform",
 		Debug:   debug,
 	}
 
