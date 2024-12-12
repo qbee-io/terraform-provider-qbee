@@ -1,6 +1,6 @@
 module go.qbee.io/terraform
 
-go 1.22.7
+go 1.22.8
 
 require (
 	github.com/hashicorp/terraform-plugin-docs v0.20.1
