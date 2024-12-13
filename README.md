@@ -1,9 +1,5 @@
 # Terraform Provider Qbee (Terraform Plugin Framework)
 
-> [!IMPORTANT]
-> Alpha release, don't use in production.
-> Code is contributed by an external entity and is currently undergoing review and testing - breaking changes might be introduced.
-
 This Terraform provider implements (parts of) the qbee API, in order to facilitate configuration of
 a [qbee](https://qbee.io) account using Terraform.
 
