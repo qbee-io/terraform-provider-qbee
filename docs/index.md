@@ -26,3 +26,4 @@ provider "qbee" {
 
 - `password` (String, Sensitive) Qbee password
 - `username` (String) Qbee username
+- `base_url` (String) Base URL for the qbee API. Defaults to `https://www.app.qbee.io`

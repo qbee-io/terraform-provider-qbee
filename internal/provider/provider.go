@@ -27,6 +27,7 @@ type QbeeProvider struct {
 type qbeeProviderModel struct {
 	Username types.String `tfsdk:"username"`
 	Password types.String `tfsdk:"password"`
+	BaseURL  types.String `tfsdk:"base_url"`
 }
 
 func (p *QbeeProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
@@ -38,13 +39,17 @@ func (p *QbeeProvider) Schema(ctx context.Context, req provider.SchemaRequest, r
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"username": schema.StringAttribute{
-				MarkdownDescription: "Qbee username",
+				MarkdownDescription: "Qbee username. Can also be set using the QBEE_USERNAME environment variable.",
 				Optional:            true,
 			},
 			"password": schema.StringAttribute{
-				MarkdownDescription: "Qbee password",
+				MarkdownDescription: "Qbee password. Can also be set using the QBEE_PASSWORD environment variable.",
 				Optional:            true,
 				Sensitive:           true,
+			},
+			"base_url": schema.StringAttribute{
+				MarkdownDescription: "Qbee base URL. Defaults to `https://www.app.qbee.io`. Can also be set using the QBEE_BASE_URL environment variable.",
+				Optional:            true,
 			},
 		},
 	}
@@ -83,6 +88,7 @@ func (p *QbeeProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 
 	username := os.Getenv("QBEE_USERNAME")
 	password := os.Getenv("QBEE_PASSWORD")
+	baseUrl := os.Getenv("QBEE_BASE_URL")
 
 	if !config.Username.IsNull() {
 		username = config.Username.ValueString()
@@ -90,6 +96,10 @@ func (p *QbeeProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 
 	if !config.Password.IsNull() {
 		password = config.Password.ValueString()
+	}
+
+	if !config.BaseURL.IsNull() {
+		baseUrl = config.BaseURL.ValueString()
 	}
 
 	if username == "" {
@@ -109,6 +119,11 @@ func (p *QbeeProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 	}
 
 	qbeeClient := client.New()
+
+	if baseUrl != "" {
+		qbeeClient = qbeeClient.WithBaseURL(baseUrl)
+	}
+
 	err := qbeeClient.Authenticate(ctx, username, password)
 	if err != nil {
 		resp.Diagnostics.AddError(
