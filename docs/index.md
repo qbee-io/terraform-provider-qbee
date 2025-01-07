@@ -16,6 +16,7 @@ description: |-
 provider "qbee" {
   username = "qbee@example.com"
   password = "test123"
+  base_url = "https://www.app.qbee.io"
 }
 ```
 
@@ -24,6 +25,6 @@ provider "qbee" {
 
 ### Optional
 
-- `password` (String, Sensitive) Qbee password
-- `username` (String) Qbee username
-- `base_url` (String) Base URL for the qbee API. Defaults to `https://www.app.qbee.io`
+- `base_url` (String) Qbee base URL. Defaults to `https://www.app.qbee.io`. Can also be set using the QBEE_BASE_URL environment variable.
+- `password` (String, Sensitive) Qbee password. Can also be set using the QBEE_PASSWORD environment variable.
+- `username` (String) Qbee username. Can also be set using the QBEE_USERNAME environment variable.
