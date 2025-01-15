@@ -35,7 +35,7 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		Address: "go.qbee.io/terraform",
+		Address: "registry.terraform.io/qbee-io/qbee",
 		Debug:   debug,
 	}
 
