@@ -3,6 +3,8 @@ package provider
 import (
 	"context"
 	"fmt"
+	"reflect"
+
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -11,7 +13,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"go.qbee.io/client"
-	"reflect"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -77,6 +78,8 @@ type grouptreeGroupResourceModel struct {
 	Tags     types.List   `tfsdk:"tags"`
 }
 
+const nodeIDAllDevices = "root"
+
 // Create creates the resource and sets the initial Terraform state.
 func (r *grouptreeGroupResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	// Retrieve values from the plan
@@ -101,30 +104,32 @@ func (r *grouptreeGroupResource) Create(ctx context.Context, req resource.Create
 		}
 	}
 
-	// Create the resource
-	tflog.Info(ctx, fmt.Sprintf("Creating grouptree %v (title=%v), with ancestor %v", nodeID, title, ancestor))
+	// Only create the resource if it is not the root node
+	if nodeID != nodeIDAllDevices {
+		tflog.Info(ctx, fmt.Sprintf("Creating grouptree %v (title=%v), with ancestor %v", nodeID, title, ancestor))
 
-	err := r.client.GroupTreeUpdate(ctx, client.GroupTreeRequest{
-		Changes: []client.GroupTreeChange{
-			{
-				Action: client.TreeActionCreate,
-				Data: client.GroupTreeChangeData{
-					ParentID: ancestor,
-					NodeID:   nodeID,
-					Title:    title,
-					Type:     client.NodeTypeGroup,
+		if err := r.client.GroupTreeUpdate(ctx, client.GroupTreeRequest{
+			Changes: []client.GroupTreeChange{
+				{
+					Action: client.TreeActionCreate,
+					Data: client.GroupTreeChangeData{
+						ParentID: ancestor,
+						NodeID:   nodeID,
+						Title:    title,
+						Type:     client.NodeTypeGroup,
+					},
 				},
 			},
-		},
-	})
-	if err != nil {
-		fmt.Printf("error: %v", err)
-		resp.Diagnostics.AddError("Error creating Grouptree resource", "could not create grouptree resource: "+err.Error())
-		return
+		}); err != nil {
+			fmt.Printf("error: %v", err)
+			resp.Diagnostics.AddError("Error creating Grouptree resource", "could not create grouptree resource: "+err.Error())
+			return
+		}
+	} else {
+		tflog.Info(ctx, fmt.Sprintf("Skipping creation of grouptree %v (title=%v)", nodeID, title))
 	}
 
-	err = r.client.GroupTreeSetTags(ctx, nodeID, tags)
-	if err != nil {
+	if err := r.client.GroupTreeSetTags(ctx, nodeID, tags); err != nil {
 		fmt.Printf("error while settings tags to %+v: %v", tags, err)
 		resp.Diagnostics.AddError("Error creating Grouptree source", "could not set tags on resource: "+err.Error())
 		return
@@ -170,8 +175,11 @@ func (r *grouptreeGroupResource) Read(ctx context.Context, req resource.ReadRequ
 	}
 
 	ancestors := nodeInfo.Ancestors
-	lastAncestor := ancestors[len(ancestors)-2]
-	state.Ancestor = types.StringValue(lastAncestor)
+
+	if nodeID != nodeIDAllDevices {
+		lastAncestor := ancestors[len(ancestors)-2]
+		state.Ancestor = types.StringValue(lastAncestor)
+	}
 
 	// Update the current state
 	resp.State.Set(ctx, state)
