@@ -80,7 +80,7 @@ Required:
 Required:
 
 - `key` (String)
-- `value` (String, Sensitive)
+- `value` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments))
 
 Read-Only:
 

@@ -61,7 +61,7 @@ type parameter struct {
 
 type secret struct {
 	Key      types.String `tfsdk:"key"`
-	Value    types.String `tfsdk:"value"`
+	Value    types.String `tfsdk:"value_wo"`
 	SecretId types.String `tfsdk:"secret_id"`
 }
 
@@ -124,6 +124,7 @@ func (r *parametersResource) Schema(_ context.Context, _ resource.SchemaRequest,
 						"value": schema.StringAttribute{
 							Required:  true,
 							Sensitive: true,
+							WriteOnly: true,
 						},
 						"secret_id": schema.StringAttribute{
 							Computed: true,
