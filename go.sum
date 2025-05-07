@@ -234,8 +234,8 @@ go.opentelemetry.io/otel/sdk/metric v1.31.0 h1:i9hxxLJF/9kkvfHppyLL55aW7iIJz4Jjx
 go.opentelemetry.io/otel/sdk/metric v1.31.0/go.mod h1:CRInTMVvNhUKgSAMbKyTMxqOBC0zgyxzW55lZzX43Y8=
 go.opentelemetry.io/otel/trace v1.31.0 h1:ffjsj1aRouKewfr85U2aGagJ46+MvodynlQ1HYdmJys=
 go.opentelemetry.io/otel/trace v1.31.0/go.mod h1:TXZkRk7SM2ZQLtR6eoAWQFIHPvzQ06FJAsO1tJg480A=
-go.qbee.io/client v1.2025.7 h1:h9wbsbV3p4Iez8fcXrLG+w/D4nrWf9fjWK8iNCRbSug=
-go.qbee.io/client v1.2025.7/go.mod h1:GUh8BpesiFo2aFWR6z4oiPcVcrITwFjuQSVrkw1la68=
+go.qbee.io/client v1.2025.19 h1:SprrYtOIt6rXNQ17aVnkK5nBs6Gn8DMl7pvrOllW8Fs=
+go.qbee.io/client v1.2025.19/go.mod h1:XqYNso/ChFrWYIDZ/5gpHWXZVxgdYl3Yw97N0XaPeUQ=
 go.qbee.io/transport v1.25.12 h1:MhQaLcV1fYVJHysC3jywWzk44vGP45sZoXJ339iGrlw=
 go.qbee.io/transport v1.25.12/go.mod h1:CnCOkjNyL0qfF3e6jaeXUtlCKxDxFEpc3Un+sFlZm9Y=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
