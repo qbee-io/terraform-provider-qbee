@@ -52,7 +52,7 @@ resource "qbee_parameters" "test" {
   secrets = [
     {
       key = "secret-key"
-      value = "secret-value"
+      value_wo = "secret-value"
     }
   ]
 }
@@ -68,7 +68,7 @@ resource "qbee_parameters" "test" {
 					resource.TestCheckResourceAttr("qbee_parameters.test", "parameters.1.value", "parameter-value-2"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "secrets.#", "1"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "secrets.0.key", "secret-key"),
-					resource.TestCheckResourceAttr("qbee_parameters.test", "secrets.0.value", "secret-value"),
+					resource.TestCheckNoResourceAttr("qbee_parameters.test", "secrets.0.value_wo"),
 					resource.TestCheckResourceAttrSet("qbee_parameters.test", "secrets.0.secret_id"),
 				),
 			},
