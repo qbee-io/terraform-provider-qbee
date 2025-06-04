@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Support for the `role` resource, allowing to manage roles.
+- Support for the `bootstrap_key` resource, allowing to manage bootstrap keys.
+
 ## [0.6.1] - 2023-12-07
 
 ### Fixed
