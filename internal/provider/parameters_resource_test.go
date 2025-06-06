@@ -1,29 +1,37 @@
 package provider
 
 import (
+	"fmt"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
 )
 
 func TestAccParametersResource(t *testing.T) {
+	secretState := struct {
+		SecretId string
+	}{
+		"",
+	}
+
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			// Create and Read testing
 			{
 				Config: providerConfig + `
-resource "qbee_parameters" "test" {
-  tag = "terraform:acctest:parameters"
-  extend = true
-  parameters = [
-    {
-      key = "parameter-key-1"
-      value = "parameter-value-1"
-    }
-  ]
-}
-`,
+			resource "qbee_parameters" "test" {
+			 tag = "terraform:acctest:parameters"
+			 extend = true
+			 parameters = [
+			   {
+			     key = "parameter-key-1"
+			     value = "parameter-value-1"
+			   }
+			 ]
+			}
+			`,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_parameters.test", "tag", "terraform:acctest:parameters"),
 					resource.TestCheckNoResourceAttr("qbee_parameters.test", "node"),
@@ -36,27 +44,28 @@ resource "qbee_parameters" "test" {
 			// Update to a different template
 			{
 				Config: providerConfig + `
-resource "qbee_parameters" "test" {
-  tag = "terraform:acctest:parameters"
-  extend = false
-  parameters = [
-    {
-      key = "parameter-key-1"
-      value = "parameter-value-1"
-    },
-    {
-      key = "parameter-key-2"
-      value = "parameter-value-2"
-    }
-  ]
-  secrets = [
-    {
-      key = "secret-key"
-      value_wo = "secret-value"
-    }
-  ]
-}
-`,
+			resource "qbee_parameters" "test" {
+			 tag = "terraform:acctest:parameters"
+			 extend = false
+			 parameters = [
+			   {
+			     key = "parameter-key-1"
+			     value = "parameter-value-1"
+			   },
+			   {
+			     key = "parameter-key-2"
+			     value = "parameter-value-2"
+			   }
+			 ]
+			 secrets = [
+			   {
+			     key = "secret-key"
+			     value_wo = "secret-value"
+			     value_wo_version = "1"
+			   }
+			 ]
+			}
+			`,
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_parameters.test", "tag", "terraform:acctest:parameters"),
 					resource.TestCheckNoResourceAttr("qbee_parameters.test", "node"),
@@ -69,7 +78,9 @@ resource "qbee_parameters" "test" {
 					resource.TestCheckResourceAttr("qbee_parameters.test", "secrets.#", "1"),
 					resource.TestCheckResourceAttr("qbee_parameters.test", "secrets.0.key", "secret-key"),
 					resource.TestCheckNoResourceAttr("qbee_parameters.test", "secrets.0.value_wo"),
+					resource.TestCheckResourceAttr("qbee_parameters.test", "secrets.0.value_wo_version", "1"),
 					resource.TestCheckResourceAttrSet("qbee_parameters.test", "secrets.0.secret_id"),
+					testAccCheckSecretIdSet("qbee_parameters.test", "secrets.0", &secretState),
 				),
 			},
 			// Import tag
@@ -82,6 +93,84 @@ resource "qbee_parameters" "test" {
 				ImportStateVerifyIgnore: []string{
 					"secrets",
 				},
+			},
+			// Change to only have secrets
+			{
+				Config: providerConfig + `
+resource "qbee_parameters" "test" {
+  tag = "terraform:acctest:parameters"
+  extend = false
+  secrets = [
+    {
+      key = "secret-key"
+      value_wo = "secret-value"
+      value_wo_version = "1"
+    }
+  ]
+}
+`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("qbee_parameters.test", "tag", "terraform:acctest:parameters"),
+					resource.TestCheckNoResourceAttr("qbee_parameters.test", "node"),
+					resource.TestCheckResourceAttr("qbee_parameters.test", "secrets.#", "1"),
+					resource.TestCheckResourceAttr("qbee_parameters.test", "secrets.0.key", "secret-key"),
+					resource.TestCheckNoResourceAttr("qbee_parameters.test", "secrets.0.value_wo"),
+					resource.TestCheckResourceAttr("qbee_parameters.test", "secrets.0.value_wo_version", "1"),
+					resource.TestCheckResourceAttrSet("qbee_parameters.test", "secrets.0.secret_id"),
+					testAccCheckSecretIdSet("qbee_parameters.test", "secrets.0", &secretState),
+				),
+			},
+			// If value_wo_version does not change, it should not update
+			{
+				Config: providerConfig + `
+resource "qbee_parameters" "test" {
+  tag = "terraform:acctest:parameters"
+  extend = false
+  secrets = [
+    {
+      key = "secret-key"
+      value_wo = "secret-value-2"
+      value_wo_version = "1"
+    }
+  ]
+}
+`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("qbee_parameters.test", "tag", "terraform:acctest:parameters"),
+					resource.TestCheckNoResourceAttr("qbee_parameters.test", "node"),
+					resource.TestCheckResourceAttr("qbee_parameters.test", "secrets.#", "1"),
+					resource.TestCheckResourceAttr("qbee_parameters.test", "secrets.0.key", "secret-key"),
+					resource.TestCheckNoResourceAttr("qbee_parameters.test", "secrets.0.value_wo"),
+					resource.TestCheckResourceAttr("qbee_parameters.test", "secrets.0.value_wo_version", "1"),
+					resource.TestCheckResourceAttrSet("qbee_parameters.test", "secrets.0.secret_id"),
+					testAccCheckSecretIdUnchanged("qbee_parameters.test", "secrets.0", &secretState),
+				),
+			},
+			// If we do update value_wo_version, it should update
+			{
+				Config: providerConfig + `
+resource "qbee_parameters" "test" {
+  tag = "terraform:acctest:parameters"
+  extend = false
+  secrets = [
+    {
+      key = "secret-key"
+      value_wo = "secret-value-2"
+      value_wo_version = "2"
+    }
+  ]
+}
+`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("qbee_parameters.test", "tag", "terraform:acctest:parameters"),
+					resource.TestCheckNoResourceAttr("qbee_parameters.test", "node"),
+					resource.TestCheckResourceAttr("qbee_parameters.test", "secrets.#", "1"),
+					resource.TestCheckResourceAttr("qbee_parameters.test", "secrets.0.key", "secret-key"),
+					resource.TestCheckNoResourceAttr("qbee_parameters.test", "secrets.0.value_wo"),
+					resource.TestCheckResourceAttr("qbee_parameters.test", "secrets.0.value_wo_version", "2"),
+					resource.TestCheckResourceAttrSet("qbee_parameters.test", "secrets.0.secret_id"),
+					testAccCheckSecretIdChanged("qbee_parameters.test", "secrets.0", &secretState),
+				),
 			},
 			// Update to be for a node
 			{
@@ -122,4 +211,65 @@ resource "qbee_parameters" "test" {
 			},
 		},
 	})
+}
+
+func testAccCheckSecretIdSet(resourceName string, resourcePath string, state *struct{ SecretId string }) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("not found: %s", resourceName)
+		}
+
+		secretId, ok := rs.Primary.Attributes[resourcePath+".secret_id"]
+		if !ok {
+			return fmt.Errorf("not found: %s.%s.secret_id", resourceName, resourcePath)
+		}
+
+		if secretId == "" {
+			return fmt.Errorf("secret ID is not set for %s.%s", resourceName, resourcePath)
+		}
+
+		state.SecretId = secretId
+		return nil
+	}
+}
+
+func testAccCheckSecretIdUnchanged(resourceName string, resourcePath string, state *struct{ SecretId string }) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("not found: %s", resourceName)
+		}
+
+		secretId, ok := rs.Primary.Attributes[resourcePath+".secret_id"]
+		if !ok {
+			return fmt.Errorf("not found: %s.%s.secret_id", resourceName, resourcePath)
+		}
+
+		if secretId != state.SecretId {
+			return fmt.Errorf("secret ID changed for %s.%s: expected %s, got %s", resourceName, resourcePath, state.SecretId, secretId)
+		}
+
+		return nil
+	}
+}
+
+func testAccCheckSecretIdChanged(resourceName string, resourcePath string, state *struct{ SecretId string }) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[resourceName]
+		if !ok {
+			return fmt.Errorf("not found: %s", resourceName)
+		}
+
+		secretId, ok := rs.Primary.Attributes[resourcePath+".secret_id"]
+		if !ok {
+			return fmt.Errorf("not found: %s.%s.secret_id", resourceName, resourcePath)
+		}
+
+		if secretId == state.SecretId {
+			return fmt.Errorf("secret ID did not change for %s.%s: expected different from %s, got %s", resourceName, resourcePath, state.SecretId, secretId)
+		}
+
+		return nil
+	}
 }
