@@ -14,8 +14,9 @@ resource "qbee_parameters" "example_with_secrets" {
   extend = true
   secrets = [
     {
-      key   = "secret-key"
-      value = "secret-value"
+      key              = "secret-key"
+      value_wo         = "secret-value"
+      value_wo_version = "9635d15d-0a2e-ea5b-7bd1-9837802d5fe4"
     }
   ]
 }

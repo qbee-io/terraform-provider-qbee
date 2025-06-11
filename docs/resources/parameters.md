@@ -29,8 +29,9 @@ resource "qbee_parameters" "example_with_secrets" {
   extend = true
   secrets = [
     {
-      key   = "secret-key"
-      value = "secret-value"
+      key              = "secret-key"
+      value_wo         = "secret-value"
+      value_wo_version = "9635d15d-0a2e-ea5b-7bd1-9837802d5fe4"
     }
   ]
 }
@@ -79,8 +80,9 @@ Required:
 
 Required:
 
-- `key` (String)
-- `value` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments))
+- `key` (String) The key of the secret.
+- `value_wo` (String, Sensitive, [Write-only](https://developer.hashicorp.com/terraform/language/resources/ephemeral#write-only-arguments)) The value of the secret. This value is write-only and will not be stored or returned in the state. If you need to overwrite the value, you must change the value_wo_version attribute to a new value.
+- `value_wo_version` (String) A version of the value_wo. This is used to detect changes in the value_wo. If you need to overwrite the value, you must change this value to a new value.
 
 Read-Only:
 

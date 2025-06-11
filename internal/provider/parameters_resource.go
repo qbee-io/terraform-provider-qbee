@@ -60,9 +60,10 @@ type parameter struct {
 }
 
 type secret struct {
-	Key      types.String `tfsdk:"key"`
-	Value    types.String `tfsdk:"value_wo"`
-	SecretId types.String `tfsdk:"secret_id"`
+	Key          types.String `tfsdk:"key"`
+	Value        types.String `tfsdk:"value_wo"`
+	ValueVersion types.String `tfsdk:"value_wo_version"`
+	SecretId     types.String `tfsdk:"secret_id"`
 }
 
 // Metadata returns the resource type name.
@@ -119,12 +120,21 @@ func (r *parametersResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"key": schema.StringAttribute{
-							Required: true,
+							Required:    true,
+							Description: "The key of the secret.",
 						},
-						"value": schema.StringAttribute{
+						"value_wo": schema.StringAttribute{
 							Required:  true,
 							Sensitive: true,
 							WriteOnly: true,
+							Description: "The value of the secret. This value is write-only and will not be stored " +
+								"or returned in the state. If you need to overwrite the value, you must change the value_wo_version " +
+								"attribute to a new value.",
+						},
+						"value_wo_version": schema.StringAttribute{
+							Required: true,
+							Description: "A version of the value_wo. This is used to detect changes in the value_wo. " +
+								"If you need to overwrite the value, you must change this value to a new value.",
 						},
 						"secret_id": schema.StringAttribute{
 							Computed: true,
@@ -225,21 +235,36 @@ func (r *parametersResource) Read(ctx context.Context, req resource.ReadRequest,
 
 	state.Extend = types.BoolValue(currentParameters.Extend)
 
-	mappedParameters := make([]parameter, len(currentParameters.Parameters))
-	for i, p := range currentParameters.Parameters {
-		mappedParameters[i] = parameter{
-			Key:   types.StringValue(p.Key),
-			Value: types.StringValue(p.Value),
+	if len(currentParameters.Parameters) > 0 {
+		mappedParameters := make([]parameter, len(currentParameters.Parameters))
+		for i, p := range currentParameters.Parameters {
+			mappedParameters[i] = parameter{
+				Key:   types.StringValue(p.Key),
+				Value: types.StringValue(p.Value),
+			}
 		}
+		state.Parameters = mappedParameters
 	}
-	state.Parameters = mappedParameters
 
-	mappedSecrets := make([]secret, len(currentParameters.Secrets))
-	for i, s := range currentParameters.Secrets {
-		mappedSecrets[i] = secret{
-			Key:      types.StringValue(s.Key),
-			SecretId: types.StringValue(s.Value),
+	if len(currentParameters.Secrets) > 0 {
+		mappedSecrets := make([]secret, len(currentParameters.Secrets))
+		for i, s := range currentParameters.Secrets {
+			// Find the secret value version in the current state
+			valueVersion := ""
+			for _, s2 := range state.Secrets {
+				if s2.Key.ValueString() == s.Key {
+					valueVersion = s2.ValueVersion.ValueString()
+					break
+				}
+			}
+
+			mappedSecrets[i] = secret{
+				Key:          types.StringValue(s.Key),
+				ValueVersion: types.StringValue(valueVersion),
+				SecretId:     types.StringValue(s.Value),
+			}
 		}
+		state.Secrets = mappedSecrets
 	}
 
 	diags = resp.State.Set(ctx, state)
