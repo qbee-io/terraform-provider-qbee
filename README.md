@@ -5,14 +5,17 @@ a [qbee](https://qbee.io) account using Terraform.
 
 ## Using the provider
 
-For documentation on how to use this provider, see the [provider documentation](https://registry.terraform.io/providers/qbee.io/qbee/latest/docs)
+For documentation on how to use this provider, see
+the [provider documentation](https://registry.terraform.io/providers/qbee.io/qbee/latest/docs)
 at the Terraform Registry.
 
 ## Developing the Provider
 
-If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (see [Requirements](#requirements) above).
+If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your
+machine (see [Requirements](#requirements) above).
 
-To compile the provider, run `go install`. This will build the provider and put the provider binary in the `$GOPATH/bin` directory.
+To compile the provider, run `go install`. This will build the provider and put the provider binary
+in the `$GOPATH/bin` directory.
 
 To generate or update documentation, run `go generate`.
 
@@ -21,7 +24,7 @@ To generate or update documentation, run `go generate`.
 - [Terraform](https://www.terraform.io/downloads.html) >= 1.0
 - [Go](https://golang.org/doc/install) >= 1.22
 - [Goreleaser](https://goreleaser.com/install/) >= 1.20
- 
+
 ### Building The Provider
 
 1. Clone the repository
@@ -64,11 +67,13 @@ TF_LOG=INFO TF_ACC=1 go test -count=1 -run='TestAccTagFiledistributionGroupResou
 ```
 
 Where:
+
 - `TF_LOG` is the log level for Terraform
 - `TF_ACC` is the flag to run acceptance tests
 - `go test` is the command to run the tests
 - `-count=1` is the flag to run the test only once
-- `-run='TestAccTagFiledistributionGroupResource'` is the flag to run only the test with the given name
+- `-run='TestAccTagFiledistributionGroupResource'` is the flag to run only the test with the given
+  name
 
 You can leave out the `-run` flag to run all tests.
 
@@ -78,25 +83,32 @@ If you wish to use the provider locally, you can build it and place it in the co
 
 ```shell
 # From the directory of terraform-provider-qbee
-goreleaser build --single-target --clean
+goreleaser build --single-target --clean --snapshot
 ```
 
-After this, the binary we built will be in ./dist/terraform-provider-qbee_OS_ARCH. Copy that to the
-terraform project where you want to use it:
+After this, the binary we built will be in ./dist/terraform-provider-qbee_OS_ARCH. If we rename that
+to `terraform-provider-qbee`, terraform can directly use it.
 
-```shell
-# From the root of your terraform project (where your *.tf files are stored):
-GOOS=$(go env GOOS)
-GOARCH=$(go env GOARCH)
-TARGET_DIR=".terraform/plugins/qbee.io/terraform/$VERSION/${GOOS}_${GOARCH}"
+Update your `~/.terraformrc` file to include:
 
-mkdir -p "$TARGET_DIR"
-cp <dist> "$TARGET_DIR"
+```hcl
+provider_installation {
+  dev_overrides {
+    "qbee-io/qbee" = "/<path-to-project>/dist/terraform-provider-qbee-lesteenman_darwin_arm64"
+  }
+
+  direct {}
+}
+```
 ```
 
-After that, initialize the terraform project with `terraform init -plugin-dir=.terraform/plugins`
+And run `terraform apply` in a project using the provider.
+
+See https://developer.hashicorp.com/terraform/cli/config/config-file#development-overrides-for-provider-developers
+for up-to-date instructions on how to use for local testing.
 
 ## About
 
-_This repository is built on the [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework) template.
+_This repository is built on
+the [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework) template.
 
