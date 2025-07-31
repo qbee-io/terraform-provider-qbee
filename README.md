@@ -100,7 +100,6 @@ provider_installation {
   direct {}
 }
 ```
-```
 
 And run `terraform apply` in a project using the provider.
 

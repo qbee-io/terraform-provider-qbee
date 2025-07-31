@@ -143,19 +143,19 @@ func (r *filemanagerFileResource) Read(ctx context.Context, req resource.ReadReq
 	// Get the current file from Qbee
 	metadata, err := r.client.GetFileMetadata(ctx, filePath)
 	if err != nil {
-		handled := false
+		errorHandled := false
 		if clientErr, ok := err.(client.Error); ok {
 			if errObj, ok := clientErr["error"].(map[string]any); ok {
 				if code, ok := errObj["code"].(float64); ok && int(code) == 404 {
 					// If the file is not found, we have drift, and it was deleted from qbee
 					tflog.Info(ctx, fmt.Sprintf("File %v not found, removing from state", filePath))
 					resp.State.RemoveResource(ctx)
-					handled = true
+					errorHandled = true
 				}
 			}
 		}
 
-		if !handled {
+		if !errorHandled {
 			// Any other error is unexpected
 			resp.Diagnostics.AddError(
 				errorReadingFilemanagerFile,
