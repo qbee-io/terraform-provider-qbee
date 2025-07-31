@@ -1,0 +1,29 @@
+name: Integration Tests
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.24.5
+
+      - name: Build and test
+        env:
+          QBEE_USERNAME: ${{ secrets.QBEE_USERNAME }}
+          QBEE_PASSWORD: ${{ secrets.QBEE_PASSWORD }}
+          QBEE_BASE_URL: ${{ secrets.QBEE_BASE_URL }}
+          TF_ACC: 1
+        run:  go test ./... -timeout 120m
