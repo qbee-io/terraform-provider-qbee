@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Correctly handle drift detection for qbee_filemanager_file and qbee_filemanager_directory resources.
+
+## [1.2.0] - 2025-06-04
+
+- Support secret management using write-only value and value_version
+
+## [1.1.0] - 2025-06-04
+
 - Support for the `role` resource, allowing to manage roles.
 - Support for the `bootstrap_key` resource, allowing to manage bootstrap keys.
 

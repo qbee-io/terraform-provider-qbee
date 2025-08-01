@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"go.qbee.io/client"
 	"path/filepath"
-	"strings"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -111,16 +110,21 @@ func (r *filemanagerDirectoryResource) Read(ctx context.Context, req resource.Re
 
 	metadata, err := r.client.GetFileMetadata(ctx, directoryPath)
 	if err != nil {
-		if strings.HasSuffix(err.Error(), "404") {
-			// If the directory is not found, we have drift, and it was deleted from qbee
-			resp.State.RemoveResource(ctx)
-		} else {
-			// Any other error is unexpected
-			resp.Diagnostics.AddError(
-				"Error reading Qbee Filemanager data",
-				"Could not read Filemanager data from Qbee: "+err.Error())
+		if clientErr, ok := err.(client.Error); ok {
+			if errObj, ok := clientErr["error"].(map[string]any); ok {
+				if code, ok := errObj["code"].(float64); ok && int(code) == 404 {
+					// If the directory is not found, we have drift, and it was deleted from qbee
+					tflog.Info(ctx, fmt.Sprintf("Directory %v not found, removing from state", directoryPath))
+					resp.State.RemoveResource(ctx)
+					return
+				}
+			}
 		}
 
+		// Any other error is unexpected
+		resp.Diagnostics.AddError(
+			"Error reading Qbee Filemanager data",
+			"Could not read Filemanager data from Qbee with an unexpected error: "+err.Error())
 		return
 	}
 
