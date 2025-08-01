@@ -110,25 +110,21 @@ func (r *filemanagerDirectoryResource) Read(ctx context.Context, req resource.Re
 
 	metadata, err := r.client.GetFileMetadata(ctx, directoryPath)
 	if err != nil {
-		errorHandled := false
 		if clientErr, ok := err.(client.Error); ok {
 			if errObj, ok := clientErr["error"].(map[string]any); ok {
 				if code, ok := errObj["code"].(float64); ok && int(code) == 404 {
 					// If the directory is not found, we have drift, and it was deleted from qbee
 					tflog.Info(ctx, fmt.Sprintf("Directory %v not found, removing from state", directoryPath))
 					resp.State.RemoveResource(ctx)
-					errorHandled = true
+					return
 				}
 			}
 		}
 
-		if !errorHandled {
-			// Any other error is unexpected
-			resp.Diagnostics.AddError(
-				"Error reading Qbee Filemanager data",
-				"Could not read Filemanager data from Qbee with an unexpected error: "+err.Error())
-		}
-
+		// Any other error is unexpected
+		resp.Diagnostics.AddError(
+			"Error reading Qbee Filemanager data",
+			"Could not read Filemanager data from Qbee with an unexpected error: "+err.Error())
 		return
 	}
 
