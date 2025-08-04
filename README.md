@@ -102,7 +102,7 @@ Next, update your `~/.terraformrc` file to include:
 provider_installation {
   dev_overrides {
     # Assuming you moved the provider binary to ~/terraform-provider-overrides/terraform-provider-qbee
-    "qbee-io/qbee" = "~/terraform-provider-overrides/terraform-provider-qbee
+    "qbee-io/qbee" = "~/terraform-provider-overrides/terraform-provider-qbee"
   }
   
   direct {}
