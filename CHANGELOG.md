@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+## [1.2.1] - 2025-08-01
+
 ### Fixed
 - Correctly handle drift detection for qbee_filemanager_file and qbee_filemanager_directory resources.
 
