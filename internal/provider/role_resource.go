@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -91,7 +92,7 @@ func (r *roleResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 							Description: "The permission that is granted by this policy.",
 						},
 						"resources": schema.ListAttribute{
-							Required:    true,
+							Optional:    true,
 							Description: "The list of resources that are affected by this policy. Use `*` to match all resources.",
 							ElementType: types.StringType,
 						},
