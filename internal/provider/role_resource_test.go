@@ -46,8 +46,7 @@ resource "qbee_role" "test" {
 	  resources = ["*"]
     },
     {
-      permission = "device:manage"
-	  resources = ["*"]
+      permission = "files:read"
     }
   ]
 }
@@ -59,9 +58,8 @@ resource "qbee_role" "test" {
 					resource.TestCheckResourceAttr("qbee_role.test", "policies.0.permission", "device:read"),
 					resource.TestCheckResourceAttr("qbee_role.test", "policies.0.resources.#", "1"),
 					resource.TestCheckResourceAttr("qbee_role.test", "policies.0.resources.0", "*"),
-					resource.TestCheckResourceAttr("qbee_role.test", "policies.1.permission", "device:manage"),
-					resource.TestCheckResourceAttr("qbee_role.test", "policies.1.resources.#", "1"),
-					resource.TestCheckResourceAttr("qbee_role.test", "policies.1.resources.0", "*"),
+					resource.TestCheckResourceAttr("qbee_role.test", "policies.1.permission", "files:read"),
+					resource.TestCheckResourceAttr("qbee_role.test", "policies.1.resources.#", "0"),
 				),
 			},
 			// Import testing

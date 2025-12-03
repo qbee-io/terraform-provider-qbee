@@ -48,6 +48,9 @@ resource "qbee_role" "test" {
 Required:
 
 - `permission` (String) The permission that is granted by this policy.
+
+Optional:
+
 - `resources` (List of String) The list of resources that are affected by this policy. Use `*` to match all resources.
 
 ## Import
