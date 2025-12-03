@@ -21,13 +21,13 @@ resource "qbee_firewall" "test" {
     policy = "DROP"
     rules = [
       {
-        proto = "TCP"
+        proto = "tcp"
         target = "ACCEPT"
         src_ip = "192.0.2.0/24"
         dst_port = "22"
       },
       {
-        proto = "UDP"
+        proto = "udp"
         target = "ACCEPT"
         src_ip = "198.51.100.0/24"
         dst_port = "50055"
@@ -42,11 +42,11 @@ resource "qbee_firewall" "test" {
 					resource.TestCheckResourceAttr("qbee_firewall.test", "extend", "true"),
 					resource.TestCheckResourceAttr("qbee_firewall.test", "input.policy", "DROP"),
 					resource.TestCheckResourceAttr("qbee_firewall.test", "input.rules.#", "2"),
-					resource.TestCheckResourceAttr("qbee_firewall.test", "input.rules.0.proto", "TCP"),
+					resource.TestCheckResourceAttr("qbee_firewall.test", "input.rules.0.proto", "tcp"),
 					resource.TestCheckResourceAttr("qbee_firewall.test", "input.rules.0.target", "ACCEPT"),
 					resource.TestCheckResourceAttr("qbee_firewall.test", "input.rules.0.src_ip", "192.0.2.0/24"),
 					resource.TestCheckResourceAttr("qbee_firewall.test", "input.rules.0.dst_port", "22"),
-					resource.TestCheckResourceAttr("qbee_firewall.test", "input.rules.1.proto", "UDP"),
+					resource.TestCheckResourceAttr("qbee_firewall.test", "input.rules.1.proto", "udp"),
 					resource.TestCheckResourceAttr("qbee_firewall.test", "input.rules.1.target", "ACCEPT"),
 					resource.TestCheckResourceAttr("qbee_firewall.test", "input.rules.1.src_ip", "198.51.100.0/24"),
 					resource.TestCheckResourceAttr("qbee_firewall.test", "input.rules.1.dst_port", "50055"),
@@ -62,7 +62,7 @@ resource "qbee_firewall" "test" {
     policy = "ACCEPT"
     rules = [
       {
-        proto = "TCP"
+        proto = "tcp"
         target = "DROP"
         src_ip = "0.0.0.0/0"
         dst_port = "22"
@@ -77,7 +77,7 @@ resource "qbee_firewall" "test" {
 					resource.TestCheckResourceAttr("qbee_firewall.test", "extend", "false"),
 					resource.TestCheckResourceAttr("qbee_firewall.test", "input.policy", "ACCEPT"),
 					resource.TestCheckResourceAttr("qbee_firewall.test", "input.rules.#", "1"),
-					resource.TestCheckResourceAttr("qbee_firewall.test", "input.rules.0.proto", "TCP"),
+					resource.TestCheckResourceAttr("qbee_firewall.test", "input.rules.0.proto", "tcp"),
 					resource.TestCheckResourceAttr("qbee_firewall.test", "input.rules.0.target", "DROP"),
 					resource.TestCheckResourceAttr("qbee_firewall.test", "input.rules.0.src_ip", "0.0.0.0/0"),
 					resource.TestCheckResourceAttr("qbee_firewall.test", "input.rules.0.dst_port", "22"),
