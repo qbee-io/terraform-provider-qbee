@@ -8,9 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- Make 'resources' for the roles_resource optional.
+- Make 'resources' for the qbee_role resource optional.
 
-### Fixed
 - Correctly handle drift detection for qbee_filemanager_file and qbee_filemanager_directory resources.
 
 ## [1.2.0] - 2025-06-04
