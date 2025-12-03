@@ -3,6 +3,8 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -16,7 +18,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"go.qbee.io/client"
 	"go.qbee.io/client/config"
-	"strings"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -93,9 +94,9 @@ func (r *firewallResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 							Attributes: map[string]schema.Attribute{
 								"proto": schema.StringAttribute{
 									Required:    true,
-									Description: "The protocol to match. Either UDP or TCP.",
+									Description: "The protocol to match. Either udp or tcp.",
 									Validators: []validator.String{
-										stringvalidator.OneOf("UDP", "TCP"),
+										stringvalidator.OneOf("udp", "tcp"),
 									},
 								},
 								"target": schema.StringAttribute{
