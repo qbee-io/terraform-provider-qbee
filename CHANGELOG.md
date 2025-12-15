@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Breaking change: qbee_parameters now has a top-level, optional `secrets_version` attribute. When set,
+the secrets will only be updated if this version changes. Otherwise, the inputs to `secrets_wo` will
+always be written directly.
+
+The `value_wo_version` attribute of a secret has been removed, as the entire `secrets_wo` object is now
+write-only. This is required to allow using an ephemeral resource as inputs to this attribute.
+
 ## [1.2.3] - 2025-12-04
 
 ### Fixed
