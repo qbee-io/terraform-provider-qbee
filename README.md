@@ -6,7 +6,7 @@ a [qbee](https://qbee.io) account using Terraform.
 ## Using the provider
 
 For documentation on how to use this provider, see
-the [provider documentation](https://registry.terraform.io/providers/qbee.io/qbee/latest/docs)
+the [provider documentation](https://registry.terraform.io/providers/qbee-io/qbee/latest/docs)
 at the Terraform Registry.
 
 ## Developing the Provider
