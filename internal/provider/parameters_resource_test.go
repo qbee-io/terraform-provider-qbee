@@ -110,7 +110,7 @@ resource "qbee_parameters" "test" {
 					resource.TestCheckNoResourceAttr("qbee_parameters.test", "parameters"),
 					resource.TestCheckResourceAttrSet("qbee_parameters.test", "secrets_hash"),
 					resource.TestCheckNoResourceAttr("qbee_parameters.test", "secrets_wo"),
-					testAccCheckSecretsHashSet("qbee_parameters.test", &secretsHashState),
+					testAccCheckSecretsHashIsSet("qbee_parameters.test", &secretsHashState),
 				),
 			},
 			// If we do update secrets_wo, the hash should update
@@ -134,7 +134,7 @@ resource "qbee_parameters" "test" {
 					resource.TestCheckNoResourceAttr("qbee_parameters.test", "node"),
 					resource.TestCheckResourceAttrSet("qbee_parameters.test", "secrets_hash"),
 					resource.TestCheckNoResourceAttr("qbee_parameters.test", "secrets_wo"),
-					testAccCheckSecretsHashChanged("qbee_parameters.test", &secretsHashState),
+					testAccCheckSecretsHashHasChanged("qbee_parameters.test", &secretsHashState),
 				),
 			},
 			// If we change the secrets, it should still update
@@ -397,7 +397,7 @@ resource "qbee_parameters" "test" {
 					resource.TestCheckResourceAttr("qbee_parameters.test", "secrets_wo_version", "1"),
 					resource.TestCheckResourceAttrSet("qbee_parameters.test", "secrets_hash"),
 					resource.TestCheckNoResourceAttr("qbee_parameters.test", "secrets_wo"),
-					testAccCheckSecretsHashSet("qbee_parameters.test", &secretsHashState),
+					testAccCheckSecretsHashIsSet("qbee_parameters.test", &secretsHashState),
 				),
 			},
 			// Change the secret value but keep the same version: no plan expected
@@ -419,7 +419,7 @@ resource "qbee_parameters" "test" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_parameters.test", "secrets_wo_version", "1"),
 					resource.TestCheckResourceAttrSet("qbee_parameters.test", "secrets_hash"),
-					testAccCheckSecretsHashUnchanged("qbee_parameters.test", &secretsHashState),
+					testAccCheckSecretsHashIsUnchanged("qbee_parameters.test", &secretsHashState),
 				),
 			},
 			// Bump the version: expect a plan to rewrite secrets
@@ -442,14 +442,14 @@ resource "qbee_parameters" "test" {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("qbee_parameters.test", "secrets_wo_version", "2"),
 					resource.TestCheckResourceAttrSet("qbee_parameters.test", "secrets_hash"),
-					testAccCheckSecretsHashChanged("qbee_parameters.test", &secretsHashState),
+					testAccCheckSecretsHashHasChanged("qbee_parameters.test", &secretsHashState),
 				),
 			},
 		},
 	})
 }
 
-func testAccCheckSecretsHashSet(resourceName string, state *struct{ SecretsHash string }) resource.TestCheckFunc {
+func testAccCheckSecretsHashIsSet(resourceName string, state *struct{ SecretsHash string }) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[resourceName]
 		if !ok {
@@ -470,7 +470,7 @@ func testAccCheckSecretsHashSet(resourceName string, state *struct{ SecretsHash 
 	}
 }
 
-func testAccCheckSecretsHashChanged(resourceName string, previousState *struct{ SecretsHash string }) resource.TestCheckFunc {
+func testAccCheckSecretsHashHasChanged(resourceName string, previousState *struct{ SecretsHash string }) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[resourceName]
 		if !ok {
@@ -498,7 +498,7 @@ func testAccCheckSecretsHashChanged(resourceName string, previousState *struct{ 
 	}
 }
 
-func testAccCheckSecretsHashUnchanged(resourceName string, previousState *struct{ SecretsHash string }) resource.TestCheckFunc {
+func testAccCheckSecretsHashIsUnchanged(resourceName string, previousState *struct{ SecretsHash string }) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[resourceName]
 		if !ok {

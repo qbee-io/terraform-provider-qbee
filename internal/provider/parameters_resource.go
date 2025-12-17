@@ -3,10 +3,10 @@ package provider
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
@@ -54,9 +54,14 @@ type parametersResource struct {
 // that the planned change to SecretsHash should be "Unknown", and we can set it to
 // what qbee returned after the apply.
 type privateStateModel struct {
-	// Contains a hash of the actual secret values. Used to detect changes in the inputs.
+	// SecretsWoValuesHash is the SHA-256 hash of the write-only secret input values (secrets_wo)
+	// from the Terraform configuration. It is stored in private state so we can detect when the
+	// user-provided secret values changed and force SecretsHash to Unknown during planning.
 	SecretsWoValuesHash string `json:"secrets_wo_values_hash"`
-	// The last SecretsHash we got back when updating qbee. Used to detect remote drift.
+
+	// QbeeSecretIdsHash is the SHA-256 hash of the secrets as returned by qbee after the last
+	// successful write. It is used for drift detection by comparing it with the current SecretsHash
+	// derived from the remote state during Read/ModifyPlan.
 	QbeeSecretIdsHash string `json:"qbee_secret_ids_hash"`
 }
 
@@ -160,7 +165,7 @@ func (r *parametersResource) Schema(_ context.Context, _ resource.SchemaRequest,
 			},
 			"secrets_hash": schema.StringAttribute{
 				Computed:    true,
-				Description: "Internal hash used to be able to trigger updates when remote secrets drift.",
+				Description: "A computed hash based on secret IDs from qbee. This value changes when secrets are updated and is used to detect drift in remote secret values.",
 			},
 		},
 	}
@@ -196,7 +201,7 @@ func (r *parametersResource) Create(ctx context.Context, req resource.CreateRequ
 	effective.SecretsWo = configuration.SecretsWo
 	effective.SecretsWoVersion = configuration.SecretsWoVersion
 
-	diags, private := r.writeParameters(ctx, &effective, privateStateModel{})
+	private, diags := r.writeParameters(ctx, &effective, privateStateModel{})
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -244,6 +249,7 @@ func (r *parametersResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 
 	effective := plan
+	// Only copy SecretsWo from configuration. Keep SecretsWoVersion from the plan.
 	effective.SecretsWo = configuration.SecretsWo
 
 	privateStateBytes, diags := req.Private.GetKey(ctx, privateStateKey)
@@ -252,13 +258,13 @@ func (r *parametersResource) Update(ctx context.Context, req resource.UpdateRequ
 		return
 	}
 
-	diags, initialPrivateState := unmarshalPrivateState(privateStateBytes)
+	initialPrivateState, diags := unmarshalPrivateState(privateStateBytes)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	diags, privateState := r.writeParameters(ctx, &effective, initialPrivateState)
+	privateState, diags := r.writeParameters(ctx, &effective, initialPrivateState)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -380,20 +386,16 @@ func (r *parametersResource) ModifyPlan(ctx context.Context, req resource.Modify
 	// We would trigger a change by setting SecretsHash to Unknown, causing Terraform to trigger an update.
 	if !configuration.SecretsWoVersion.IsNull() {
 		newVersion := configuration.SecretsWoVersion.ValueInt64()
-		if state.SecretsWoVersion.ValueInt64() == newVersion {
-			plan.SecretsHash = state.SecretsHash
-		} else {
+
+		// If the Version changed (either from null to any value, or from a value to another value),
+		// set the hash to "Unknown" to trigger a resource update in the plan.
+		if state.SecretsWoVersion.IsNull() || state.SecretsWoVersion.ValueInt64() != newVersion {
 			plan.SecretsHash = types.StringUnknown()
+		} else {
+			plan.SecretsHash = state.SecretsHash
 		}
-		diags = resp.Plan.Set(ctx, &plan)
-		resp.Diagnostics.Append(diags...)
-
-		return
-	}
-
-	// No SecretsWoVersion: fall back to input-hash and last-written-hash based change detection.
-	if len(configuration.SecretsWo) > 0 {
-		// Check if our inputs changed by comparing privateState.SecretsWoValueHash
+	} else if len(configuration.SecretsWo) > 0 {
+		// No SecretsWoVersion: Check if our inputs changed by comparing privateState.SecretsWoValueHash
 		secrets := make([]config.Parameter, len(configuration.SecretsWo))
 		for i, s := range configuration.SecretsWo {
 			secrets[i] = config.Parameter{
@@ -410,7 +412,7 @@ func (r *parametersResource) ModifyPlan(ctx context.Context, req resource.Modify
 			return
 		}
 
-		diags, privateState := unmarshalPrivateState(privateStateBytes)
+		privateState, diags := unmarshalPrivateState(privateStateBytes)
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
 			return
@@ -427,11 +429,13 @@ func (r *parametersResource) ModifyPlan(ctx context.Context, req resource.Modify
 		} else {
 			plan.SecretsHash = state.SecretsHash
 		}
-	} else if state.SecretsHash.IsNull() {
-		plan.SecretsHash = types.StringNull()
-	} else {
-		// Was not yet null, so we used to have secrets, and now we don't. We need to clear those.
+	} else if !state.SecretsHash.IsNull() {
+		// No SecretsWoVersion and no SecretsWo: SecretsHash is not null, which means we used to
+		// have secrets. Set to Unknown so we trigger an update which will clear them in qbee.
 		plan.SecretsHash = types.StringUnknown()
+	} else {
+		// No SecretsWoVersion and no SecretsWo: SecretsHash is null, so we don't need to update.
+		plan.SecretsHash = types.StringNull()
 	}
 
 	diags = resp.Plan.Set(ctx, &plan)
@@ -519,7 +523,7 @@ func (r *parametersResource) ImportState(ctx context.Context, req resource.Impor
 	}
 }
 
-func (r *parametersResource) writeParameters(ctx context.Context, effective *parametersResourceModel, privateState privateStateModel) (diag.Diagnostics, []byte) {
+func (r *parametersResource) writeParameters(ctx context.Context, effective *parametersResourceModel, privateState privateStateModel) ([]byte, diag.Diagnostics) {
 	configType, identifier := effective.typeAndIdentifier()
 	extend := effective.Extend.ValueBool()
 
@@ -550,12 +554,12 @@ func (r *parametersResource) writeParameters(ctx context.Context, effective *par
 		// We should not change, so copy the existing values
 		activeConfig, err := r.client.GetActiveConfig(ctx, configType, identifier, config.EntityConfigScopeOwn)
 		if err != nil {
-			return diag.Diagnostics{
+			return nil, diag.Diagnostics{
 				diag.NewErrorDiagnostic(
 					errorReadingParameters,
 					"error reading the active configuration: "+err.Error(),
 				),
-			}, nil
+			}
 		}
 
 		currentParameters := activeConfig.BundleData.Parameters
@@ -582,22 +586,22 @@ func (r *parametersResource) writeParameters(ctx context.Context, effective *par
 
 	changeRequest, err := createChangeRequest(config.ParametersBundle, content, configType, identifier)
 	if err != nil {
-		return diag.Diagnostics{
+		return nil, diag.Diagnostics{
 			diag.NewErrorDiagnostic(
 				errorWritingParameters,
 				err.Error(),
 			),
-		}, nil
+		}
 	}
 
 	change, err := r.client.CreateConfigurationChange(ctx, changeRequest)
 	if err != nil {
-		return diag.Diagnostics{
+		return nil, diag.Diagnostics{
 			diag.NewErrorDiagnostic(
 				errorWritingParameters,
 				fmt.Sprintf("Error creating a parameters resource with qbee: %v", err),
 			),
-		}, nil
+		}
 	}
 
 	_, err = r.client.CommitConfiguration(ctx, "terraform: create parameters_resource")
@@ -615,7 +619,7 @@ func (r *parametersResource) writeParameters(ctx context.Context, effective *par
 			)
 		}
 
-		return diags, nil
+		return nil, diags
 	}
 
 	if len(secretsToWrite) == 0 {
@@ -625,22 +629,22 @@ func (r *parametersResource) writeParameters(ctx context.Context, effective *par
 
 	createdConfig, ok := change.Content.(map[string]interface{})["config"].(map[string]interface{})
 	if !ok {
-		return diag.Diagnostics{
+		return nil, diag.Diagnostics{
 			diag.NewErrorDiagnostic(
 				errorWritingParameters,
 				"error reading the created change content",
 			),
-		}, nil
+		}
 	}
 
 	createdSecretsStruct, ok := createdConfig["secrets"].([]interface{})
 	if !ok {
-		return diag.Diagnostics{
+		return nil, diag.Diagnostics{
 			diag.NewErrorDiagnostic(
 				errorWritingParameters,
 				fmt.Sprintf("error reading the created secrets: could not read %v", createdConfig["secrets"]),
 			),
-		}, nil
+		}
 	}
 
 	createdSecretsResponse := make([]config.Parameter, len(createdSecretsStruct))
@@ -655,19 +659,19 @@ func (r *parametersResource) writeParameters(ctx context.Context, effective *par
 	qbeeSecretIdsHash := computeSecretsHash(createdSecretsResponse)
 	effective.SecretsHash = types.StringValue(qbeeSecretIdsHash)
 
-	err, privateStateJson := marshalPrivateState(secretValuesHash, qbeeSecretIdsHash)
+	privateStateJson, err := marshalPrivateState(secretValuesHash, qbeeSecretIdsHash)
 	if err != nil {
-		return diag.Diagnostics{
+		return nil, diag.Diagnostics{
 			diag.NewErrorDiagnostic(errorReadingParameters,
 				fmt.Sprintf("error marshaling private state: %v", err),
 			),
-		}, nil
+		}
 	}
 
-	return nil, privateStateJson
+	return privateStateJson, nil
 }
 
-func marshalPrivateState(secretValuesHash string, qbeeSecretIdsHash string) (error, []byte) {
+func marshalPrivateState(secretValuesHash string, qbeeSecretIdsHash string) ([]byte, error) {
 	state := privateStateModel{
 		SecretsWoValuesHash: secretValuesHash,
 		QbeeSecretIdsHash:   qbeeSecretIdsHash,
@@ -675,40 +679,45 @@ func marshalPrivateState(secretValuesHash string, qbeeSecretIdsHash string) (err
 
 	j, err := json.Marshal(state)
 	if err != nil {
-		return fmt.Errorf("could not marshal private state: %w", err), nil
+		return nil, fmt.Errorf("could not marshal private state: %w", err)
 	}
 
-	return nil, j
+	return j, nil
 }
 
-func unmarshalPrivateState(private []byte) (diag.Diagnostics, privateStateModel) {
+func unmarshalPrivateState(private []byte) (privateStateModel, diag.Diagnostics) {
 	if private == nil {
-		return nil, privateStateModel{}
+		return privateStateModel{}, nil
 	}
 
 	var p privateStateModel
 	err := json.Unmarshal(private, &p)
 	if err != nil {
-		return diag.Diagnostics{
-				diag.NewErrorDiagnostic(
-					errorReadingParameters,
-					"error reading the private state: "+err.Error())},
-			privateStateModel{}
+		return privateStateModel{}, diag.Diagnostics{
+			diag.NewErrorDiagnostic(
+				errorReadingParameters,
+				"error reading the private state: "+err.Error())}
 	}
 
-	return nil, p
+	return p, nil
 }
 
 func computeSecretsHash(secrets []config.Parameter) string {
-	sort.Slice(secrets, func(i, j int) bool {
-		return secrets[i].Key < secrets[j].Key
-	})
 
-	h := sha256.New()
+	// Single growing buffer; avoids per-field []byte(string) allocations.
+	// Capacity guess is optional; it just reduces re-allocations for typical sizes.
+	buf := make([]byte, 0, len(secrets)*32)
+
 	for _, s := range secrets {
-		h.Write([]byte(s.Key))
-		h.Write([]byte(s.Value))
+		// Key
+		buf = binary.AppendUvarint(buf, uint64(len(s.Key)))
+		buf = append(buf, s.Key...)
+
+		// Value
+		buf = binary.AppendUvarint(buf, uint64(len(s.Value)))
+		buf = append(buf, s.Value...)
 	}
 
-	return hex.EncodeToString(h.Sum(nil))
+	sum := sha256.Sum256(buf)
+	return hex.EncodeToString(sum[:])
 }
