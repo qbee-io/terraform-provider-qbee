@@ -27,11 +27,11 @@ resource "qbee_filedistribution" "example_node" {
   parameters = [
     {
       key   = "parameter-key-1"
-      value = "parameter-value-1"
+      value = "$(parameter-value-1)"
     },
     {
       key   = "parameter-key-2"
-      value = "parameter-value-2"
+      value = "$(parameter-value-2)"
     }
   ]
 }
