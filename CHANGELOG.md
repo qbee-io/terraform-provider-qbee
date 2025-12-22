@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Fix examples for qbee_filemanager_file and qbee_parameters
+
 ## [1.2.3] - 2025-12-04
 
 ### Fixed
