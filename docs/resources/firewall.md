@@ -70,7 +70,7 @@ Required:
 Required:
 
 - `dst_port` (String) The destination port to match.
-- `proto` (String) The protocol to match. Either UDP or TCP.
+- `proto` (String) The protocol to match. Either udp or tcp.
 - `src_ip` (String) The source ip to match.
 - `target` (String) The action to take when this rule is matched. Either DROP or ACCEPT.
 
