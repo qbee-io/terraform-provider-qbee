@@ -12,11 +12,10 @@ resource "qbee_parameters" "example_tag" {
 resource "qbee_parameters" "example_with_secrets" {
   tag    = "example_tag"
   extend = true
-  secrets = [
+  secrets_wo = [
     {
-      key              = "secret-key"
-      value_wo         = "secret-value"
-      value_wo_version = "9635d15d-0a2e-ea5b-7bd1-9837802d5fe4"
+      key   = "secret-key"
+      value = "secret-value"
     }
   ]
 }
@@ -32,6 +31,18 @@ resource "qbee_filedistribution" "example_node" {
     {
       key   = "parameter-key-2"
       value = "$(parameter-value-2)"
+    }
+  ]
+}
+
+resource "qbee_parameters" "example_with_secrets_and_version" {
+  tag                = "example_tag"
+  extend             = true
+  secrets_wo_version = 1
+  secrets_wo = [
+    {
+      key   = "secret-key"
+      value = "secret-value"
     }
   ]
 }
