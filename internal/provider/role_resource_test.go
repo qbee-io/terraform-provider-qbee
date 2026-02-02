@@ -62,11 +62,39 @@ resource "qbee_role" "test" {
 					resource.TestCheckResourceAttr("qbee_role.test", "policies.1.resources.#", "0"),
 				),
 			},
+			// Rename
+			{
+				Config: providerConfig + `
+resource "qbee_role" "test" {
+  name = "terraform:acctest:renamed-role"
+  description = "Terraform acceptance test role updated"
+  policies = [
+    {
+      permission = "device:read"
+	  resources = ["*"]
+    },
+    {
+      permission = "files:read"
+    }
+  ]
+}
+`,
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("qbee_role.test", "name", "terraform:acctest:renamed-role"),
+					resource.TestCheckResourceAttr("qbee_role.test", "description", "Terraform acceptance test role updated"),
+					resource.TestCheckResourceAttr("qbee_role.test", "policies.#", "2"),
+					resource.TestCheckResourceAttr("qbee_role.test", "policies.0.permission", "device:read"),
+					resource.TestCheckResourceAttr("qbee_role.test", "policies.0.resources.#", "1"),
+					resource.TestCheckResourceAttr("qbee_role.test", "policies.0.resources.0", "*"),
+					resource.TestCheckResourceAttr("qbee_role.test", "policies.1.permission", "files:read"),
+					resource.TestCheckResourceAttr("qbee_role.test", "policies.1.resources.#", "0"),
+				),
+			},
 			// Import testing
 			{
 				ResourceName:                         "qbee_role.test",
 				ImportState:                          true,
-				ImportStateId:                        "terraform:acctest:role",
+				ImportStateId:                        "terraform:acctest:renamed-role",
 				ImportStateVerify:                    true,
 				ImportStateVerifyIdentifierAttribute: "name",
 			},
