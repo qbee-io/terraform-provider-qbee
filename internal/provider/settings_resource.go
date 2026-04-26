@@ -119,13 +119,20 @@ func (m *settingsResourceModel) fromBundleData(bundleData config.BundleData) err
 }
 
 func (m settingsResourceModel) toBundleData(metadata config.Metadata) any {
-	return config.Settings{
-		Metadata:          metadata,
-		Metrics:           m.Metrics.ValueBool(),
-		Reports:           m.Reports.ValueBool(),
-		RemoteConsole:     m.RemoteConsole.ValueBool(),
-		SoftwareInventory: m.SoftwareInventory.ValueBool(),
-		ProcessInventory:  m.ProcessInventory.ValueBool(),
-		AgentInterval:     int(m.AgentInterval.ValueInt64()),
+	bundleData := config.Settings{
+		Metadata: metadata,
 	}
+
+	if metadata.Reset {
+		return bundleData
+	}
+
+	bundleData.Metrics = m.Metrics.ValueBool()
+	bundleData.Reports = m.Reports.ValueBool()
+	bundleData.RemoteConsole = m.RemoteConsole.ValueBool()
+	bundleData.SoftwareInventory = m.SoftwareInventory.ValueBool()
+	bundleData.ProcessInventory = m.ProcessInventory.ValueBool()
+	bundleData.AgentInterval = int(m.AgentInterval.ValueInt64())
+
+	return bundleData
 }

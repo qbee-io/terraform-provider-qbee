@@ -109,8 +109,8 @@ func (p *QbeeProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 	}
 
 	if password == "" {
-		resp.Diagnostics.AddAttributeError(path.Root("password"), "Missing Qbee API username",
-			"the Qbee API client can not be created because the username is missing."+
+		resp.Diagnostics.AddAttributeError(path.Root("password"), "Missing Qbee API password",
+			"the Qbee API client can not be created because the password is missing."+
 				"Set the password in the provider config or use the QBEE_PASSWORD environment variable.")
 	}
 
@@ -121,7 +121,7 @@ func (p *QbeeProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 	qbeeClient := NewClient()
 
 	if baseUrl != "" {
-		qbeeClient.WithBaseURL(baseUrl)
+		qbeeClient.Client = qbeeClient.WithBaseURL(baseUrl)
 	}
 
 	err := qbeeClient.Authenticate(ctx, username, password)

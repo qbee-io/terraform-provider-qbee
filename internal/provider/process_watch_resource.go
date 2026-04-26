@@ -128,6 +128,10 @@ func (m processWatchResourceModel) toBundleData(metadata config.Metadata) any {
 		Metadata: metadata,
 	}
 
+	if metadata.Reset {
+		return bundleData
+	}
+
 	for _, process := range m.Processes {
 		bundleData.Processes = append(bundleData.Processes, config.ProcessWatcher{
 			Name:    process.Name.ValueString(),

@@ -58,7 +58,7 @@ type resourceModelManager interface {
 	getBaseResourceModel() configurationResourceModel
 
 	// setEntityID sets the entity ID (node or tag) on the model based on the provided entity type and ID.
-	setEntityID(entityType config.EntityType, entityID string)	
+	setEntityID(entityType config.EntityType, entityID string)
 
 	// getConfigBundle returns the configuration bundle associated with the resource model.
 	getConfigBundle() config.Bundle
@@ -87,26 +87,30 @@ func (cli *Client) commitConfiguration(ctx context.Context, model resourceModelM
 
 	tflog.Info(ctx, message)
 
+	metadata := config.Metadata{Version: "v1"}
+
+	if reset {
+		metadata.Reset = true
+	} else {
+		metadata.Enabled = true
+		metadata.Extend = baseModel.Extend.ValueBool()
+	}
+
 	// Commit change request based on the resource model and the operation type (set or reset)
-	changeReequest := client.ChangeRequest{
+	changeRequest := client.ChangeRequest{
 		BundleName: model.getConfigBundle(),
-		Content: model.toBundleData(config.Metadata{
-			Version: "v1",
-			Enabled: true,
-			Reset:   reset,
-			Extend:  baseModel.Extend.ValueBool(),
-		}),
+		Content:    model.toBundleData(metadata),
 	}
 
 	entityType := baseModel.getEntityType()
 	switch entityType {
 	case config.EntityTypeNode:
-		changeReequest.NodeID = baseModel.Node.ValueString()
+		changeRequest.NodeID = baseModel.Node.ValueString()
 	case config.EntityTypeTag:
-		changeReequest.Tag = baseModel.Tag.ValueString()
+		changeRequest.Tag = baseModel.Tag.ValueString()
 	default:
 		return nil, fmt.Errorf("unsupported entity type: %s", entityType)
 	}
 
-	return cli.CommitConfiguration(ctx, "terraform: "+message, changeReequest)
+	return cli.CommitConfiguration(ctx, "terraform: "+message, changeRequest)
 }

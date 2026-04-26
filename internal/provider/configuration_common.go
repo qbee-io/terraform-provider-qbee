@@ -97,12 +97,19 @@ func (r *configurationResource) Read(ctx context.Context, req resource.ReadReque
 
 	var entityType config.EntityType
 	var entityID string
+
 	if tag != nil && *tag != "" {
 		entityType = config.EntityTypeTag
 		entityID = *tag
-	} else {
+	} else if nodeID != nil && *nodeID != "" {
 		entityType = config.EntityTypeNode
 		entityID = *nodeID
+	} else {
+		resp.Diagnostics.AddError(
+			fmt.Sprintf("Error reading %s configuration", r.name),
+			"Either 'node' or 'tag' must be specified",
+		)
+		return
 	}
 
 	// Retrieve the active configuration for the resource from the API
@@ -201,7 +208,7 @@ func (m *configurationResourceModel) setEntityID(entityType config.EntityType, e
 
 // getEntityType returns the entity type (node or tag) associated with the resource model.
 func (m configurationResourceModel) getEntityType() config.EntityType {
-	if !m.Tag.IsNull() {
+	if m.Tag.ValueString() != "" {
 		return config.EntityTypeTag
 	}
 
