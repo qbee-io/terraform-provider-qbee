@@ -29,11 +29,13 @@ const (
 
 // NewRoleResource is a helper function to simplify the provider implementation.
 func NewRoleResource() resource.Resource {
-	return &roleResource{}
+	return &roleResource{
+		resourceBase: newResourceBase("role"),
+	}
 }
 
 type roleResource struct {
-	client *client.Client
+	resourceBase
 }
 
 type roleResourceModel struct {
@@ -46,20 +48,6 @@ type roleResourceModel struct {
 type policy struct {
 	Permission types.String `tfsdk:"permission"`
 	Resources  []string     `tfsdk:"resources"`
-}
-
-// Metadata returns the resource type name.
-func (r *roleResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_role"
-}
-
-// Configure adds the provider configured client to the resource.
-func (r *roleResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	r.client = req.ProviderData.(*client.Client)
 }
 
 // Schema defines the schema for the resource.

@@ -12,15 +12,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"go.qbee.io/client"
 	"go.qbee.io/client/config"
-
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -42,11 +41,18 @@ const (
 
 // NewParametersResource is a helper function to simplify the provider implementation.
 func NewParametersResource() resource.Resource {
-	return &parametersResource{}
+	return &parametersResource{
+		configurationResource: configurationResource{
+			resourceBase: newResourceBase(config.ParametersBundle),
+			modelFactory: func() any {
+				return new(parametersResourceModel)
+			},
+		},
+	}
 }
 
 type parametersResource struct {
-	client *client.Client
+	configurationResource
 }
 
 // We use private state to keep a hash of the secret values we write.
@@ -66,18 +72,12 @@ type privateStateModel struct {
 }
 
 type parametersResourceModel struct {
-	Node             types.String `tfsdk:"node"`
-	Tag              types.String `tfsdk:"tag"`
-	Extend           types.Bool   `tfsdk:"extend"`
-	Parameters       []parameter  `tfsdk:"parameters"`
-	SecretsWo        []secret     `tfsdk:"secrets_wo"`
-	SecretsWoVersion types.Int64  `tfsdk:"secrets_wo_version"`
+	configurationResourceModel
+	Parameters       []parameter `tfsdk:"parameters"`
+	SecretsWo        []secret    `tfsdk:"secrets_wo"`
+	SecretsWoVersion types.Int64 `tfsdk:"secrets_wo_version"`
 	// SecretsHash contains the hash based on the secret id's in Qbee.
 	SecretsHash types.String `tfsdk:"secrets_hash"`
-}
-
-func (m parametersResourceModel) typeAndIdentifier() (config.EntityType, string) {
-	return typeAndIdentifier(m.Tag, m.Node)
 }
 
 type parameter struct {
@@ -88,20 +88,6 @@ type parameter struct {
 type secret struct {
 	Key   types.String `tfsdk:"key"`
 	Value types.String `tfsdk:"value"`
-}
-
-// Metadata returns the resource type name.
-func (r *parametersResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_parameters"
-}
-
-// Configure adds the provider configured client to the resource.
-func (r *parametersResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	r.client = req.ProviderData.(*client.Client)
 }
 
 // Schema defines the schema for the resource.
@@ -303,7 +289,7 @@ func (r *parametersResource) Read(ctx context.Context, req resource.ReadRequest,
 		return
 	}
 
-	configType, identifier := state.typeAndIdentifier()
+	configType, identifier := state.getEntityType(), state.getEntityID()
 
 	// Read the real status
 	activeConfig, err := r.client.GetActiveConfig(ctx, configType, identifier, config.EntityConfigScopeOwn)
@@ -453,47 +439,36 @@ func (r *parametersResource) Delete(ctx context.Context, req resource.DeleteRequ
 	}
 
 	// Delete the resource
-	configType, identifier := state.typeAndIdentifier()
+	configType, identifier := state.getEntityType(), state.getEntityID()
 	tflog.Info(ctx, fmt.Sprintf("Deleting parameters for %v %v", configType, identifier))
 
-	content := config.Parameters{
-		Metadata: config.Metadata{
-			Reset:   true,
-			Version: "v1",
+	changeRequest := client.ChangeRequest{
+		BundleName: config.ParametersBundle,
+		Content: config.Parameters{
+			Metadata: config.Metadata{
+				Reset:   true,
+				Version: "v1",
+			},
 		},
 	}
 
-	changeRequest, err := createChangeRequest(config.ParametersBundle, content, configType, identifier)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			errorDeletingParameters,
-			err.Error(),
+	switch configType {
+	case config.EntityTypeNode:
+		changeRequest.NodeID = identifier
+	case config.EntityTypeTag:
+		changeRequest.Tag = identifier
+	default:
+		resp.Diagnostics.AddError(errorDeletingParameters,
+			fmt.Sprintf("unknown entity type %q for parameters resource during deletion", configType),
 		)
 		return
 	}
 
-	change, err := r.client.CreateConfigurationChange(ctx, changeRequest)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			errorDeletingParameters,
-			err.Error(),
-		)
-		return
-	}
-
-	_, err = r.client.CommitConfiguration(ctx, "terraform: create parameters_resource")
+	_, err := r.client.CommitConfiguration(ctx, "terraform: reset parameters_resource", changeRequest)
 	if err != nil {
 		resp.Diagnostics.AddError(errorDeletingParameters,
-			"error creating a commit to delete the parameters resource: "+err.Error(),
+			"error creating a commit to reset the parameters resource: "+err.Error(),
 		)
-
-		err = r.client.DeleteConfigurationChange(ctx, change.SHA)
-		if err != nil {
-			resp.Diagnostics.AddError(
-				errorDeletingParameters,
-				"error deleting uncommitted parameters changes: "+err.Error(),
-			)
-		}
 
 		return
 	}
@@ -524,7 +499,7 @@ func (r *parametersResource) ImportState(ctx context.Context, req resource.Impor
 }
 
 func (r *parametersResource) writeParameters(ctx context.Context, effective *parametersResourceModel, privateState privateStateModel) ([]byte, diag.Diagnostics) {
-	configType, identifier := effective.typeAndIdentifier()
+	configType, identifier := effective.getEntityType(), effective.getEntityID()
 	extend := effective.Extend.ValueBool()
 
 	// Create the resource
@@ -584,40 +559,31 @@ func (r *parametersResource) writeParameters(ctx context.Context, effective *par
 		Secrets:    secretsToWrite,
 	}
 
-	changeRequest, err := createChangeRequest(config.ParametersBundle, content, configType, identifier)
-	if err != nil {
+	changeRequest := client.ChangeRequest{
+		BundleName: config.ParametersBundle,
+		Content:    content,
+	}
+
+	switch configType {
+	case config.EntityTypeNode:
+		changeRequest.NodeID = identifier
+	case config.EntityTypeTag:
+		changeRequest.Tag = identifier
+	default:
 		return nil, diag.Diagnostics{
 			diag.NewErrorDiagnostic(
 				errorWritingParameters,
-				err.Error(),
+				fmt.Sprintf("unknown entity type %q for parameters resource during write", configType),
 			),
 		}
 	}
 
-	change, err := r.client.CreateConfigurationChange(ctx, changeRequest)
-	if err != nil {
-		return nil, diag.Diagnostics{
-			diag.NewErrorDiagnostic(
-				errorWritingParameters,
-				fmt.Sprintf("Error creating a parameters resource with qbee: %v", err),
-			),
-		}
-	}
-
-	_, err = r.client.CommitConfiguration(ctx, "terraform: create parameters_resource")
+	commit, err := r.client.CommitConfiguration(ctx, "terraform: create parameters_resource", changeRequest)
 	if err != nil {
 		diags := diag.Diagnostics{}
 
 		err = fmt.Errorf("error creating a commit for the parameters: %w", err)
 		diags.AddError(errorWritingParameters, err.Error())
-
-		err = r.client.DeleteConfigurationChange(ctx, change.SHA)
-		if err != nil {
-			diags.AddError(
-				errorWritingParameters,
-				fmt.Errorf("error deleting uncommitted parameters changes: %w", err).Error(),
-			)
-		}
 
 		return nil, diags
 	}
@@ -626,6 +592,27 @@ func (r *parametersResource) writeParameters(ctx context.Context, effective *par
 		effective.SecretsHash = types.StringNull()
 		return nil, nil
 	}
+
+	commitExtended, err := r.client.GetCommit(ctx, commit.SHA)
+	if err != nil {
+		diags := diag.Diagnostics{}
+
+		err = fmt.Errorf("error getting commit details for the parameters: %w", err)
+		diags.AddError(errorWritingParameters, err.Error())
+
+		return nil, diags
+	}
+
+	if len(commitExtended.Changes) != 1 {
+		return nil, diag.Diagnostics{
+			diag.NewErrorDiagnostic(
+				errorWritingParameters,
+				"error reading the commit changes: unexpected number of changes found in the commit",
+			),
+		}
+	}
+
+	change := commitExtended.Changes[0]
 
 	createdConfig, ok := change.Content.(map[string]interface{})["config"].(map[string]interface{})
 	if !ok {

@@ -3,6 +3,8 @@ package provider
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -11,7 +13,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"go.qbee.io/client"
-	"path/filepath"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -22,25 +23,13 @@ var (
 )
 
 func NewFilemanagerDirectoryResource() resource.Resource {
-	return &filemanagerDirectoryResource{}
+	return &filemanagerDirectoryResource{
+		resourceBase: newResourceBase("filemanager_directory"),
+	}
 }
 
 type filemanagerDirectoryResource struct {
-	client *client.Client
-}
-
-// Configure adds the provider configured client to the resource.
-func (r *filemanagerDirectoryResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	r.client = req.ProviderData.(*client.Client)
-}
-
-// Metadata returns the resource type name.
-func (r *filemanagerDirectoryResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_filemanager_directory"
+	resourceBase
 }
 
 // Schema defines the schema for the resource.

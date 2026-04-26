@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -27,31 +28,17 @@ const (
 
 // NewBootstrapKey is a helper function to simplify the provider implementation.
 func NewBootstrapKeyResource() resource.Resource {
-	return &bootstrapKeyResource{}
+	return &bootstrapKeyResource{resourceBase: newResourceBase("bootstrap_key")}
 }
 
 type bootstrapKeyResource struct {
-	client *client.Client
+	resourceBase
 }
 
 type bootstrapKeyResourceModel struct {
 	Id         types.String `tfsdk:"id"`
 	GroupId    types.String `tfsdk:"group_id"`
 	AutoAccept types.Bool   `tfsdk:"auto_accept"`
-}
-
-// Metadata returns the resource type name.
-func (r *bootstrapKeyResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_bootstrap_key"
-}
-
-// Configure adds the provider configured client to the resource.
-func (r *bootstrapKeyResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	r.client = req.ProviderData.(*client.Client)
 }
 
 // Schema defines the schema for the resource.
