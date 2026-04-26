@@ -4,6 +4,9 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -12,8 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"go.qbee.io/client"
-	"os"
-	"path/filepath"
 )
 
 // Ensure the implementation satisfies the expected interfaces.
@@ -30,25 +31,13 @@ const (
 )
 
 func NewFilemanagerFileResource() resource.Resource {
-	return &filemanagerFileResource{}
+	return &filemanagerFileResource{
+		resourceBase: newResourceBase("filemanager_file"),
+	}
 }
 
 type filemanagerFileResource struct {
-	client *client.Client
-}
-
-// Metadata returns the resource type name.
-func (r *filemanagerFileResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_filemanager_file"
-}
-
-// Configure adds the provider configured client to the resource.
-func (r *filemanagerFileResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	r.client = req.ProviderData.(*client.Client)
+	resourceBase
 }
 
 // Schema defines the schema for the resource.
