@@ -2,14 +2,14 @@ package provider
 
 import (
 	"context"
+	"os"
+
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"go.qbee.io/client"
-	"os"
 )
 
 // Ensure QbeeProvider satisfies various provider interfaces.
@@ -109,8 +109,8 @@ func (p *QbeeProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 	}
 
 	if password == "" {
-		resp.Diagnostics.AddAttributeError(path.Root("password"), "Missing Qbee API username",
-			"the Qbee API client can not be created because the username is missing."+
+		resp.Diagnostics.AddAttributeError(path.Root("password"), "Missing Qbee API password",
+			"the Qbee API client can not be created because the password is missing."+
 				"Set the password in the provider config or use the QBEE_PASSWORD environment variable.")
 	}
 
@@ -118,10 +118,10 @@ func (p *QbeeProvider) Configure(ctx context.Context, req provider.ConfigureRequ
 		return
 	}
 
-	qbeeClient := client.New()
+	qbeeClient := NewClient()
 
 	if baseUrl != "" {
-		qbeeClient = qbeeClient.WithBaseURL(baseUrl)
+		qbeeClient.Client = qbeeClient.WithBaseURL(baseUrl)
 	}
 
 	err := qbeeClient.Authenticate(ctx, username, password)

@@ -23,25 +23,13 @@ var (
 )
 
 func NewGrouptreeGroupResource() resource.Resource {
-	return &grouptreeGroupResource{}
+	return &grouptreeGroupResource{
+		resourceBase: newResourceBase("grouptree_group"),
+	}
 }
 
 type grouptreeGroupResource struct {
-	client *client.Client
-}
-
-// Metadata returns the resource type name.
-func (r *grouptreeGroupResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_grouptree_group"
-}
-
-// Configure adds the provider configured client to the resource.
-func (r *grouptreeGroupResource) Configure(_ context.Context, req resource.ConfigureRequest, _ *resource.ConfigureResponse) {
-	if req.ProviderData == nil {
-		return
-	}
-
-	r.client = req.ProviderData.(*client.Client)
+	resourceBase
 }
 
 // Schema defines the schema for the resource.

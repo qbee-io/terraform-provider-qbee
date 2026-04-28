@@ -276,29 +276,24 @@ resource "qbee_parameters" "test" {
 			{
 				PreConfig: func() {
 					ctx := context.Background()
-					changeRequest, err := createChangeRequest("parameters", config.Parameters{
-						Metadata: config.Metadata{
-							Enabled: true,
-							Extend:  true,
-							Version: "v1",
-						},
-						Secrets: []config.Parameter{
-							{
-								Key:   "drift_key",
-								Value: "drifted value",
+					changeRequest := client.ChangeRequest{
+						Tag:        "terraform:acctest:parameters",
+						BundleName: config.ParametersBundle,
+						Content: config.Parameters{
+							Metadata: config.Metadata{
+								Version: "v1",
+								Enabled: true,
+								Extend:  true,
+							},
+							Secrets: []config.Parameter{
+								{
+									Key:   "drift_key",
+									Value: "drifted value",
+								},
 							},
 						},
-					}, config.EntityTypeTag, "terraform:acctest:parameters")
-					if err != nil {
-						t.Fatalf("failed to inject drift: %s", err)
 					}
-
-					_, err = qbeeClient.CreateConfigurationChange(ctx, changeRequest)
-					if err != nil {
-						t.Fatalf("failed to inject drift: %s", err)
-					}
-
-					_, err = qbeeClient.CommitConfiguration(ctx, "terraform:acctest:parameters")
+					_, err = qbeeClient.CommitConfiguration(ctx, "terraform:acctest:parameters", changeRequest)
 					if err != nil {
 						t.Fatalf("failed to inject drift: %s", err)
 					}
