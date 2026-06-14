@@ -69,6 +69,7 @@ func (r *passwordResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 						"password_hash": schema.StringAttribute{
 							Required:    true,
 							Description: "The password hash for the user. See https://qbee.io/docs/qbee-password.html for more information.",
+							Sensitive:   true,
 						},
 					},
 				},
