@@ -114,6 +114,7 @@ func (r *dockerContainersResource) Schema(_ context.Context, _ resource.SchemaRe
 						"password": schema.StringAttribute{
 							Required:    true,
 							Description: "Password for the registry",
+							Sensitive:   true,
 						},
 					},
 				},
