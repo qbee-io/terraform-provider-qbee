@@ -56,17 +56,41 @@ type parametersResource struct {
 	configurationResource
 }
 
-// We use private state to keep a hash of the secret values we write.
-// If, during a plan, we detect that the hash of the current values differs, we know
-// that the planned change to SecretsHash should be "Unknown", and we can set it to
-// what qbee returned after the apply.
+// Secret handling overview
+//
+// Secrets are configured through the write-only secrets_wo attribute, so their values are never
+// stored in Terraform state. In qbee, each secret value is stored separately and the parameters
+// configuration only holds a secret reference (secret:<uuid4>) per key. Two hashes keep track of them:
+//
+//   - The values hash is computed from the plain secrets_wo values in the configuration. It is kept
+//     in private state (SecretsWoValuesHash) and tells us whether the configured values changed.
+//   - The refs hash is computed from the secret references committed to qbee. It is exposed as the
+//     secrets_hash attribute and kept in private state (QbeeSecretIdsHash), and tells us whether the
+//     secrets in qbee changed outside of Terraform.
+//
+// The flow is:
+//
+//  1. Read sets secrets_hash to the hash of the secret references currently in qbee.
+//  2. ModifyPlan decides whether secrets must be rewritten, and if so plans secrets_hash as Unknown:
+//     - with secrets_wo_version: only when the version changes;
+//     - without it: when the values hash differs from SecretsWoValuesHash (configuration changed),
+//     or secrets_hash differs from QbeeSecretIdsHash (secrets changed in qbee);
+//     - when secrets_wo was removed while qbee still has secrets, so they get cleared.
+//  3. writeParameters, for an Unknown secrets_hash, stores each plain value with CreateSecret and
+//     commits the returned references. Values that already are references are committed as-is.
+//     Otherwise, it commits the references currently in qbee unchanged, so updating only the
+//     regular parameters keeps the existing secrets.
+//  4. writeParameters then sets secrets_hash to the hash of the committed references and saves both
+//     hashes in private state, for the next plan to compare against.
+
+// privateStateModel is stored in the resource's private state. See the secret handling overview above.
 type privateStateModel struct {
 	// SecretsWoValuesHash is the SHA-256 hash of the write-only secret input values (secrets_wo)
 	// from the Terraform configuration. It is stored in private state so we can detect when the
 	// user-provided secret values changed and force SecretsHash to Unknown during planning.
 	SecretsWoValuesHash string `json:"secrets_wo_values_hash"`
 
-	// QbeeSecretIdsHash is the SHA-256 hash of the secrets as returned by qbee after the last
+	// QbeeSecretIdsHash is the SHA-256 hash of the secret references committed to qbee in the last
 	// successful write. It is used for drift detection by comparing it with the current SecretsHash
 	// derived from the remote state during Read/ModifyPlan.
 	QbeeSecretIdsHash string `json:"qbee_secret_ids_hash"`
@@ -77,7 +101,8 @@ type parametersResourceModel struct {
 	Parameters       []parameter `tfsdk:"parameters"`
 	SecretsWo        []secret    `tfsdk:"secrets_wo"`
 	SecretsWoVersion types.Int64 `tfsdk:"secrets_wo_version"`
-	// SecretsHash contains the hash based on the secret id's in Qbee.
+	// SecretsHash contains the hash of the secret references in qbee (not of the secret values).
+	// It is planned as Unknown when secrets must be rewritten.
 	SecretsHash types.String `tfsdk:"secrets_hash"`
 }
 
@@ -499,6 +524,10 @@ func (r *parametersResource) ImportState(ctx context.Context, req resource.Impor
 	}
 }
 
+// writeParameters commits the parameters configuration to qbee and returns the new private state.
+// Secrets are only rewritten when effective.SecretsHash is Unknown (decided by ModifyPlan, or always
+// on Create). Otherwise the secret references currently in qbee are committed unchanged.
+// On return, effective.SecretsHash holds the hash of the committed secret references.
 func (r *parametersResource) writeParameters(ctx context.Context, effective *parametersResourceModel, privateState privateStateModel) ([]byte, diag.Diagnostics) {
 	configType, identifier := effective.getEntityType(), effective.getEntityID()
 	extend := effective.Extend.ValueBool()
@@ -514,10 +543,15 @@ func (r *parametersResource) writeParameters(ctx context.Context, effective *par
 		}
 	}
 
+	// secretsToWrite holds the secret references that will be committed to qbee.
+	// secretValuesHash is the hash of the plain configured values, saved to private state.
 	secretsToWrite := make([]config.Parameter, 0)
 	secretValuesHash := ""
 	if effective.SecretsHash.IsUnknown() {
-		// We detected a reason to change the write-only secret during ModifyPlan
+		// We detected a reason to change the write-only secret during ModifyPlan.
+		// secretValues holds the plain values from the configuration. It is only used to compute
+		// secretValuesHash, which ModifyPlan compares the configuration against in the next plan.
+		// It is never sent to qbee; secretsToWrite holds the matching references instead.
 		secretValues := make([]config.Parameter, len(effective.SecretsWo))
 		secretsToWrite = make([]config.Parameter, len(effective.SecretsWo))
 		for i, s := range effective.SecretsWo {
@@ -555,7 +589,8 @@ func (r *parametersResource) writeParameters(ctx context.Context, effective *par
 		}
 		secretValuesHash = computeSecretsHash(secretValues)
 	} else {
-		// We should not change, so copy the existing values
+		// Secrets should not change, so commit the references currently in qbee unchanged.
+		// This relies on qbee keeping a committed reference pointing to the same secret.
 		activeConfig, err := r.client.GetActiveConfig(ctx, configType, identifier, config.EntityConfigScopeOwn)
 		if err != nil {
 			return nil, diag.Diagnostics{
@@ -575,6 +610,7 @@ func (r *parametersResource) writeParameters(ctx context.Context, effective *par
 			}
 		}
 
+		// The configured values did not change, so keep the hash from the previous write.
 		secretValuesHash = privateState.SecretsWoValuesHash
 	}
 
@@ -622,7 +658,8 @@ func (r *parametersResource) writeParameters(ctx context.Context, effective *par
 		return nil, nil
 	}
 
-	// Secrets hash is based on the secret references from qbee, which are exactly what we committed
+	// Secrets hash is based on the secret references from qbee, which are exactly what we committed.
+	// Read computes the same hash from the active config, so a later mismatch means remote drift.
 	qbeeSecretIdsHash := computeSecretsHash(secretsToWrite)
 	effective.SecretsHash = types.StringValue(qbeeSecretIdsHash)
 
