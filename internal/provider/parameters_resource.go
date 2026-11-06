@@ -516,15 +516,28 @@ func (r *parametersResource) writeParameters(ctx context.Context, effective *par
 	secretsToWrite := make([]config.Parameter, 0)
 	secretValuesHash := ""
 	if effective.SecretsHash.IsUnknown() {
-		secretsToWrite = make([]config.Parameter, len(effective.SecretsWo))
 		// We detected a reason to change the write-only secret during ModifyPlan
+		secretValues := make([]config.Parameter, len(effective.SecretsWo))
+		secretsToWrite = make([]config.Parameter, len(effective.SecretsWo))
 		for i, s := range effective.SecretsWo {
-			secretsToWrite[i] = config.Parameter{
-				Key:   s.Key.ValueString(),
-				Value: s.Value.ValueString(),
+			key, value := s.Key.ValueString(), s.Value.ValueString()
+			secretValues[i] = config.Parameter{Key: key, Value: value}
+
+			// Store the secret value in qbee upfront, so we know the secret reference
+			// that will be committed without having to read it back from the commit.
+			secretRef, err := r.client.CreateSecret(ctx, value)
+			if err != nil {
+				return nil, diag.Diagnostics{
+					diag.NewErrorDiagnostic(
+						errorWritingParameters,
+						fmt.Sprintf("error creating secret for key %q: %v", key, err),
+					),
+				}
 			}
+
+			secretsToWrite[i] = config.Parameter{Key: key, Value: secretRef}
 		}
-		secretValuesHash = computeSecretsHash(secretsToWrite)
+		secretValuesHash = computeSecretsHash(secretValues)
 	} else {
 		// We should not change, so copy the existing values
 		activeConfig, err := r.client.GetActiveConfig(ctx, configType, identifier, config.EntityConfigScopeOwn)
@@ -578,7 +591,7 @@ func (r *parametersResource) writeParameters(ctx context.Context, effective *par
 		}
 	}
 
-	commit, err := r.client.CommitConfiguration(ctx, "terraform: create parameters_resource", changeRequest)
+	_, err := r.client.CommitConfiguration(ctx, "terraform: create parameters_resource", changeRequest)
 	if err != nil {
 		diags := diag.Diagnostics{}
 
@@ -593,57 +606,8 @@ func (r *parametersResource) writeParameters(ctx context.Context, effective *par
 		return nil, nil
 	}
 
-	commitExtended, err := r.client.GetCommit(ctx, commit.SHA)
-	if err != nil {
-		diags := diag.Diagnostics{}
-
-		err = fmt.Errorf("error getting commit details for the parameters: %w", err)
-		diags.AddError(errorWritingParameters, err.Error())
-
-		return nil, diags
-	}
-
-	if len(commitExtended.Changes) != 1 {
-		return nil, diag.Diagnostics{
-			diag.NewErrorDiagnostic(
-				errorWritingParameters,
-				"error reading the commit changes: unexpected number of changes found in the commit",
-			),
-		}
-	}
-
-	change := commitExtended.Changes[0]
-
-	createdConfig, ok := change.Content.(map[string]interface{})["config"].(map[string]interface{})
-	if !ok {
-		return nil, diag.Diagnostics{
-			diag.NewErrorDiagnostic(
-				errorWritingParameters,
-				"error reading the created change content",
-			),
-		}
-	}
-
-	createdSecretsStruct, ok := createdConfig["secrets"].([]interface{})
-	if !ok {
-		return nil, diag.Diagnostics{
-			diag.NewErrorDiagnostic(
-				errorWritingParameters,
-				fmt.Sprintf("error reading the created secrets: could not read %v", createdConfig["secrets"]),
-			),
-		}
-	}
-
-	createdSecretsResponse := make([]config.Parameter, len(createdSecretsStruct))
-	for i, createdSecret := range createdSecretsStruct {
-		createdSecretsResponse[i] = config.Parameter{
-			Key:   createdSecret.(map[string]interface{})["key"].(string),
-			Value: createdSecret.(map[string]interface{})["value"].(string),
-		}
-	}
-
-	// Secrets hash is based on the secret id's from qbee
-	qbeeSecretIdsHash := computeSecretsHash(createdSecretsResponse)
+	// Secrets hash is based on the secret references from qbee, which are exactly what we committed
+	qbeeSecretIdsHash := computeSecretsHash(secretsToWrite)
 	effective.SecretsHash = types.StringValue(qbeeSecretIdsHash)
 
 	privateStateJson, err := marshalPrivateState(secretValuesHash, qbeeSecretIdsHash)
