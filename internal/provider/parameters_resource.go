@@ -521,29 +521,37 @@ func (r *parametersResource) writeParameters(ctx context.Context, effective *par
 		secretValues := make([]config.Parameter, len(effective.SecretsWo))
 		secretsToWrite = make([]config.Parameter, len(effective.SecretsWo))
 		for i, s := range effective.SecretsWo {
-			key, value := s.Key.ValueString(), s.Value.ValueString()
-			secretValues[i] = config.Parameter{Key: key, Value: value}
+			secretValues[i] = config.Parameter{
+				Key:   s.Key.ValueString(),
+				Value: s.Value.ValueString(),
+			}
 
 			// Values that already are secret references are committed as-is, so they keep
 			// pointing to the existing secret in qbee.
-			if isSecretRef(value) {
-				secretsToWrite[i] = config.Parameter{Key: key, Value: value}
+			if isSecretRef(s.Value.ValueString()) {
+				secretsToWrite[i] = config.Parameter{
+					Key:   s.Key.ValueString(),
+					Value: s.Value.ValueString(),
+				}
 				continue
 			}
 
 			// Store the secret value in qbee upfront, so we know the secret reference
 			// that will be committed without having to read it back from the commit.
-			secretRef, err := r.client.CreateSecret(ctx, value)
+			secretRef, err := r.client.CreateSecret(ctx, s.Value.ValueString())
 			if err != nil {
 				return nil, diag.Diagnostics{
 					diag.NewErrorDiagnostic(
 						errorWritingParameters,
-						fmt.Sprintf("error creating secret for key %q: %v", key, err),
+						fmt.Sprintf("error creating secret for key %q: %v", s.Key.ValueString(), err),
 					),
 				}
 			}
 
-			secretsToWrite[i] = config.Parameter{Key: key, Value: secretRef}
+			secretsToWrite[i] = config.Parameter{
+				Key:   s.Key.ValueString(),
+				Value: secretRef,
+			}
 		}
 		secretValuesHash = computeSecretsHash(secretValues)
 	} else {
