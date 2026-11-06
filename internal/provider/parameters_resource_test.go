@@ -2,10 +2,12 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
 
+	tfconfig "github.com/hashicorp/terraform-plugin-testing/config"
 	"github.com/hashicorp/terraform-plugin-testing/terraform"
 	"go.qbee.io/client"
 	"go.qbee.io/client/config"
@@ -223,19 +225,8 @@ resource "qbee_parameters" "test" {
 }
 
 func TestAccParametersResourceResolvesRemoteSecretsDrift(t *testing.T) {
-	username := os.Getenv("QBEE_USERNAME")
-	password := os.Getenv("QBEE_PASSWORD")
-	baseURL := os.Getenv("QBEE_BASE_URL")
-
 	// Create a qbee client we can use to directly inject drift
-	qbeeClient := client.New()
-	if baseURL != "" {
-		qbeeClient = qbeeClient.WithBaseURL(baseURL)
-	}
-	err := qbeeClient.Authenticate(context.Background(), username, password)
-	if err != nil {
-		t.Fatalf("failed to auth drift client: %s", err)
-	}
+	qbeeClient := newAccTestQbeeClient(t)
 
 	resourceConfig := providerConfig + `
 resource "qbee_parameters" "test" {
@@ -293,7 +284,7 @@ resource "qbee_parameters" "test" {
 							},
 						},
 					}
-					_, err = qbeeClient.CommitConfiguration(ctx, "terraform:acctest:parameters", changeRequest)
+					_, err := qbeeClient.CommitConfiguration(ctx, "terraform:acctest:parameters", changeRequest)
 					if err != nil {
 						t.Fatalf("failed to inject drift: %s", err)
 					}
@@ -309,6 +300,154 @@ resource "qbee_parameters" "test" {
 			},
 		},
 	})
+}
+
+// TestAccParametersResourceReusesSecretRefs ensures that secrets_wo values which already are
+// secret references are committed as-is, instead of being stored as new secrets via CreateSecret.
+func TestAccParametersResourceReusesSecretRefs(t *testing.T) {
+	const tag = "terraform:acctest:parameters"
+	qbeeClient := newAccTestQbeeClient(t)
+
+	// Secret references as stored in qbee, captured after each step.
+	var refA, refB string
+
+	readSecretRefs := func() (map[string]string, error) {
+		activeConfig, err := qbeeClient.GetActiveConfig(context.Background(), config.EntityTypeTag, tag, config.EntityConfigScopeOwn)
+		if err != nil {
+			return nil, fmt.Errorf("error reading active config: %w", err)
+		}
+
+		refs := make(map[string]string)
+		for _, s := range activeConfig.BundleData.Parameters.Secrets {
+			if !isSecretRef(s.Value) {
+				return nil, fmt.Errorf("expected secret %q to be stored as a secret reference, got %q", s.Key, s.Value)
+			}
+			refs[s.Key] = s.Value
+		}
+
+		return refs, nil
+	}
+
+	// Secret references are only known after previous steps ran, so resolve the variables lazily.
+	configVariables := tfconfig.Variables{
+		"secret_a_ref": lazyStringVariable(func() string { return refA }),
+		"secret_b_ref": lazyStringVariable(func() string { return refB }),
+	}
+
+	resourceConfig := func(secretA, secretB string) string {
+		secrets := fmt.Sprintf(`{ key = "secret-a", value = %s }`, secretA)
+		if secretB != "" {
+			secrets += fmt.Sprintf(`,
+    { key = "secret-b", value = %s }`, secretB)
+		}
+
+		return providerConfig + `
+variable "secret_a_ref" { type = string }
+variable "secret_b_ref" { type = string }
+
+resource "qbee_parameters" "test" {
+  tag    = "` + tag + `"
+  extend = true
+  secrets_wo = [
+    ` + secrets + `
+  ]
+}
+`
+	}
+
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			// 1. Secret A is set with a plain value
+			{
+				Config:          resourceConfig(`"value-a-1"`, ""),
+				ConfigVariables: configVariables,
+				Check: func(*terraform.State) error {
+					refs, err := readSecretRefs()
+					if err != nil {
+						return err
+					}
+					if len(refs) != 1 || refs["secret-a"] == "" {
+						return fmt.Errorf("expected only secret-a to be set, got %v", refs)
+					}
+
+					refA = refs["secret-a"]
+					return nil
+				},
+			},
+			// 2. Secret A re-uses its existing reference, secret B is set with a plain value
+			{
+				Config:          resourceConfig("var.secret_a_ref", `"value-b-1"`),
+				ConfigVariables: configVariables,
+				Check: func(*terraform.State) error {
+					refs, err := readSecretRefs()
+					if err != nil {
+						return err
+					}
+					if len(refs) != 2 || refs["secret-b"] == "" {
+						return fmt.Errorf("expected secret-a and secret-b to be set, got %v", refs)
+					}
+					if refs["secret-a"] != refA {
+						return fmt.Errorf("expected secret-a to keep reference %q, got %q", refA, refs["secret-a"])
+					}
+
+					refB = refs["secret-b"]
+					return nil
+				},
+			},
+			// 3. Secret A is set with a new plain value, secret B re-uses its existing reference
+			{
+				Config:          resourceConfig(`"value-a-2"`, "var.secret_b_ref"),
+				ConfigVariables: configVariables,
+				Check: func(*terraform.State) error {
+					refs, err := readSecretRefs()
+					if err != nil {
+						return err
+					}
+					if len(refs) != 2 {
+						return fmt.Errorf("expected secret-a and secret-b to be set, got %v", refs)
+					}
+					if refs["secret-a"] == refA {
+						return fmt.Errorf("expected secret-a to get a new reference, still %q", refA)
+					}
+					if refs["secret-b"] != refB {
+						return fmt.Errorf("expected secret-b to keep reference %q, got %q", refB, refs["secret-b"])
+					}
+
+					return nil
+				},
+			},
+		},
+	})
+}
+
+// lazyStringVariable is a Terraform config variable whose value is resolved when the step runs.
+type lazyStringVariable func() string
+
+func (v lazyStringVariable) MarshalJSON() ([]byte, error) {
+	return json.Marshal(v())
+}
+
+// newAccTestQbeeClient returns a qbee client authenticated with the same credentials as the provider,
+// for inspecting or changing remote state directly in acceptance tests.
+func newAccTestQbeeClient(t *testing.T) *client.Client {
+	t.Helper()
+
+	if os.Getenv(resource.EnvTfAcc) == "" {
+		t.Skipf("Acceptance tests skipped unless env '%s' set", resource.EnvTfAcc)
+	}
+
+	qbeeClient := client.New()
+	if baseURL := os.Getenv("QBEE_BASE_URL"); baseURL != "" {
+		qbeeClient = qbeeClient.WithBaseURL(baseURL)
+	}
+
+	err := qbeeClient.Authenticate(context.Background(), os.Getenv("QBEE_USERNAME"), os.Getenv("QBEE_PASSWORD"))
+	if err != nil {
+		t.Fatalf("failed to authenticate qbee client: %s", err)
+	}
+
+	return qbeeClient
 }
 
 func TestAccParametersResourceWithEphemeralSecretSource(t *testing.T) {
@@ -518,5 +657,25 @@ func testAccCheckSecretsHashIsUnchanged(resourceName string, previousState *stru
 		}
 
 		return nil
+	}
+}
+
+func TestIsSecretRef(t *testing.T) {
+	tests := map[string]bool{
+		"secret:ddb285d5-4f9c-4815-8fcf-7e6c4ba1d5ce":   true,
+		"secret:DDB285D5-4F9C-4815-8FCF-7E6C4BA1D5CE":   false,
+		"secret:ddb285d5-4f9c-1815-8fcf-7e6c4ba1d5ce":   false,
+		"secret:ddb285d5-4f9c-4815-8fcf-7e6c4ba1d5c":    false,
+		" secret:ddb285d5-4f9c-4815-8fcf-7e6c4ba1d5ce":  false,
+		"secret:ddb285d5-4f9c-4815-8fcf-7e6c4ba1d5ce\n": false,
+		"ddb285d5-4f9c-4815-8fcf-7e6c4ba1d5ce":          false,
+		"secret-value":                                  false,
+		"":                                              false,
+	}
+
+	for value, expected := range tests {
+		if got := isSecretRef(value); got != expected {
+			t.Errorf("isSecretRef(%q) = %v, expected %v", value, got, expected)
+		}
 	}
 }
