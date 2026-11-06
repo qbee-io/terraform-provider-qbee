@@ -520,3 +520,23 @@ func testAccCheckSecretsHashIsUnchanged(resourceName string, previousState *stru
 		return nil
 	}
 }
+
+func TestIsSecretRef(t *testing.T) {
+	tests := map[string]bool{
+		"secret:ddb285d5-4f9c-4815-8fcf-7e6c4ba1d5ce":   true,
+		"secret:DDB285D5-4F9C-4815-8FCF-7E6C4BA1D5CE":   false,
+		"secret:ddb285d5-4f9c-1815-8fcf-7e6c4ba1d5ce":   false,
+		"secret:ddb285d5-4f9c-4815-8fcf-7e6c4ba1d5c":    false,
+		" secret:ddb285d5-4f9c-4815-8fcf-7e6c4ba1d5ce":  false,
+		"secret:ddb285d5-4f9c-4815-8fcf-7e6c4ba1d5ce\n": false,
+		"ddb285d5-4f9c-4815-8fcf-7e6c4ba1d5ce":          false,
+		"secret-value":                                  false,
+		"":                                              false,
+	}
+
+	for value, expected := range tests {
+		if got := isSecretRef(value); got != expected {
+			t.Errorf("isSecretRef(%q) = %v, expected %v", value, got, expected)
+		}
+	}
+}

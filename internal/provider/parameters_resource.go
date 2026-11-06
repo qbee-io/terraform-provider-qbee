@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/resourcevalidator"
@@ -523,6 +524,13 @@ func (r *parametersResource) writeParameters(ctx context.Context, effective *par
 			key, value := s.Key.ValueString(), s.Value.ValueString()
 			secretValues[i] = config.Parameter{Key: key, Value: value}
 
+			// Values that already are secret references are committed as-is, so they keep
+			// pointing to the existing secret in qbee.
+			if isSecretRef(value) {
+				secretsToWrite[i] = config.Parameter{Key: key, Value: value}
+				continue
+			}
+
 			// Store the secret value in qbee upfront, so we know the secret reference
 			// that will be committed without having to read it back from the commit.
 			secretRef, err := r.client.CreateSecret(ctx, value)
@@ -651,6 +659,16 @@ func unmarshalPrivateState(private []byte) (privateStateModel, diag.Diagnostics)
 	}
 
 	return p, nil
+}
+
+// secretRefPattern matches a qbee secret reference, e.g. secret:ddb285d5-4f9c-4815-8fcf-7e6c4ba1d5ce (UUID4).
+var secretRefPattern = regexp.MustCompile(
+	`^secret:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`,
+)
+
+// isSecretRef reports whether the value is a reference to an existing qbee secret.
+func isSecretRef(value string) bool {
+	return secretRefPattern.MatchString(value)
 }
 
 func computeSecretsHash(secrets []config.Parameter) string {
